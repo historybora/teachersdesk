@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>역사 탐정단 — 한국 고대사의 비밀</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --acc:#f4845f; --bg:#100c08;
+  --serif:'Noto Serif KR',Georgia,serif;
+  --mono:'DM Mono',monospace;
+}
+html { scroll-behavior:smooth; }
+body {
+  min-height:100vh; background:var(--bg);
+  color:rgba(255,255,255,.92); font-family:var(--serif);
+  overflow-x:hidden;
+}
+body::before {
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 52px,rgba(244,132,95,.016) 52px,rgba(244,132,95,.016) 53px),
+    repeating-linear-gradient(90deg,transparent,transparent 52px,rgba(244,132,95,.016) 52px,rgba(244,132,95,.016) 53px);
+}
+.wrap { position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:16px 16px 68px; }
+.screen { width:100%; max-width:520px; display:none; flex-direction:column; }
+.screen.active { display:flex; }
+
+/* ═══ BUTTONS ═══ */
+.btn-main {
+  background:linear-gradient(135deg,#f4845f,#d4522a); color:#fff;
+  border:none; border-radius:50px; padding:15px 36px; font-size:17px;
+  font-weight:900; cursor:pointer; letter-spacing:1px;
+  font-family:var(--serif); box-shadow:0 0 28px rgba(244,132,95,.4);
+  transition:all .2s;
+}
+.btn-main:hover { transform:scale(1.04); box-shadow:0 0 52px rgba(244,132,95,.7); }
+.btn-result {
+  background:linear-gradient(135deg,#f4c55f,#d4962a); color:#100c08;
+  border:none; border-radius:50px; padding:14px 36px; font-size:16px;
+  font-weight:900; cursor:pointer; letter-spacing:1px;
+  font-family:var(--serif); transition:all .2s;
+}
+.btn-result:hover { transform:scale(1.04); filter:brightness(1.1); }
+.btn-ghost {
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.15);
+  border-radius:12px; padding:12px; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:var(--serif); color:rgba(255,255,255,.6);
+  transition:all .2s; width:100%;
+}
+.btn-ghost:hover { background:rgba(255,255,255,.1); }
+.btn-accent {
+  border:none; border-radius:12px; padding:14px; font-size:15px;
+  font-weight:900; cursor:pointer; font-family:var(--serif);
+  letter-spacing:1px; transition:all .2s; width:100%;
+}
+.btn-accent:hover { transform:translateY(-2px); filter:brightness(1.1); }
+
+/* ═══ NAME SCREEN ═══ */
+#nameScreen { min-height:100vh; align-items:center; justify-content:center; text-align:center; gap:18px; }
+.ns-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background:rgba(244,132,95,.12); border:1px solid rgba(244,132,95,.35);
+  border-radius:20px; padding:5px 16px;
+  font-family:var(--mono); font-size:11px; color:var(--acc); letter-spacing:3px;
+}
+.ns-castle { font-size:86px; animation:float 3s ease-in-out infinite; filter:drop-shadow(0 0 28px rgba(244,132,95,.5)); }
+.ns-eyebrow { font-family:var(--mono); font-size:11px; letter-spacing:6px; color:var(--acc); text-transform:uppercase; }
+.ns-title { font-size:clamp(28px,7vw,44px); font-weight:900; color:#fff; text-shadow:0 0 40px rgba(244,132,95,.3); }
+.ns-desc { color:rgba(255,255,255,.58); font-size:13px; line-height:1.7; }
+.ns-card {
+  background:rgba(255,255,255,.05); border:1px solid rgba(244,132,95,.22);
+  border-radius:20px; padding:24px; width:100%;
+}
+.ns-card label { display:block; color:var(--acc); font-size:12px; letter-spacing:2px; font-family:var(--mono); margin-bottom:10px; }
+.ns-input {
+  width:100%; background:rgba(255,255,255,.07); border:1.5px solid rgba(244,132,95,.35);
+  border-radius:12px; padding:14px 18px; font-size:18px; font-weight:700;
+  color:#fff; font-family:var(--serif); outline:none; text-align:center; transition:all .2s;
+}
+.ns-input:focus { border-color:var(--acc); box-shadow:0 0 0 3px rgba(244,132,95,.12); }
+.ns-hint { color:rgba(255,255,255,.3); font-size:11px; margin-top:6px; }
+.ns-howto {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+  border-radius:16px; padding:16px; width:100%; text-align:left;
+}
+.ns-howto-title { color:var(--acc); font-size:12px; font-family:var(--mono); letter-spacing:2px; margin-bottom:12px; text-align:center; }
+.ns-howto-row { display:flex; gap:10px; align-items:flex-start; margin-bottom:10px; }
+.ns-howto-row:last-child { margin-bottom:0; }
+.ns-howto-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.ns-howto-txt { font-size:12px; line-height:1.6; color:rgba(255,255,255,.68); }
+.ns-howto-txt b { color:#fff; }
+
+/* ═══ ERA MAP ═══ */
+#eraScreen { min-height:100vh; gap:14px; padding-top:20px; }
+.em-header { text-align:center; }
+.em-welcome { color:var(--acc); font-size:13px; font-family:var(--mono); letter-spacing:2px; margin-bottom:4px; }
+.em-title { font-size:21px; font-weight:900; color:#fff; margin-bottom:4px; }
+.em-sub { color:rgba(255,255,255,.48); font-size:12px; line-height:1.6; }
+.em-stats {
+  background:rgba(255,255,255,.05); border:1px solid rgba(244,132,95,.14);
+  border-radius:14px; padding:13px 16px; display:flex; gap:0; align-items:stretch;
+}
+.em-stat { flex:1; text-align:center; padding:0 8px; }
+.em-stat+.em-stat { border-left:1px solid rgba(255,255,255,.08); }
+.em-stat-val { font-size:20px; font-weight:900; }
+.em-stat-lbl { font-size:10px; color:rgba(255,255,255,.38); margin-top:2px; font-family:var(--mono); }
+.btn-guide {
+  background:rgba(255,255,255,.05); border:1px dashed rgba(244,132,95,.28);
+  border-radius:12px; padding:10px 16px; font-size:12px; font-weight:700;
+  cursor:pointer; font-family:var(--serif); color:rgba(244,132,95,.75);
+  transition:all .2s; text-align:center;
+}
+.btn-guide:hover { background:rgba(244,132,95,.08); }
+.era-list { display:flex; flex-direction:column; gap:9px; }
+.era-card {
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+  border-radius:15px; padding:14px 16px; cursor:pointer;
+  display:flex; align-items:center; gap:12px;
+  transition:all .22s; position:relative; overflow:hidden;
+}
+.era-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:0 2px 2px 0; transition:width .2s; }
+.era-card:hover:not(.era-locked) { transform:translateX(4px); }
+.era-card:hover:not(.era-locked)::before { width:5px; }
+.era-locked { opacity:.32; cursor:not-allowed; }
+.era-icon { font-size:34px; flex-shrink:0; }
+.era-info { flex:1; min-width:0; }
+.era-name { font-size:14px; font-weight:700; color:#fff; }
+.era-period { font-size:11px; color:rgba(255,255,255,.38); font-family:var(--mono); margin-top:1px; }
+.era-prog-bar { height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; margin-top:4px; }
+.era-prog-fill { height:100%; border-radius:2px; transition:width .4s; }
+.era-prog-txt { font-size:11px; color:rgba(255,255,255,.38); font-family:var(--mono); margin-top:2px; }
+.era-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+.era-score-lbl { font-size:13px; font-weight:700; font-family:var(--mono); }
+.era-relic-badge { font-size:18px; }
+.era-retry-btn {
+  font-size:10px; font-family:var(--mono); padding:3px 8px;
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18);
+  border-radius:6px; cursor:pointer; color:rgba(255,255,255,.55); transition:all .15s;
+}
+.era-retry-btn:hover { background:rgba(255,255,255,.2); color:#fff; }
+.relic-shelf {
+  background:rgba(255,255,255,.04); border:1px solid rgba(244,132,95,.12);
+  border-radius:15px; padding:14px;
+}
+.shelf-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.shelf-title { font-family:var(--mono); font-size:11px; letter-spacing:3px; color:rgba(255,255,255,.38); }
+.shelf-hint { font-size:11px; color:rgba(255,255,255,.28); }
+.relics-row { display:flex; gap:8px; flex-wrap:wrap; }
+.relic-slot {
+  width:52px; height:52px; border-radius:10px;
+  border:1.5px dashed rgba(255,255,255,.12);
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; transition:all .3s; position:relative; cursor:default;
+}
+.relic-slot.earned {
+  border-style:solid; border-color:rgba(244,132,95,.5);
+  background:rgba(244,132,95,.12);
+  box-shadow:0 0 16px rgba(244,132,95,.3);
+  animation:relicGlow 2.5s ease-in-out infinite;
+}
+.relic-slot .relic-tip {
+  position:absolute; bottom:calc(100%+6px); left:50%; transform:translateX(-50%);
+  background:#1a100a; border:1px solid rgba(244,132,95,.3);
+  border-radius:8px; padding:6px 10px; font-size:11px; color:#fff;
+  white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .2s; z-index:10;
+}
+.relic-slot:hover .relic-tip { opacity:1; }
+
+/* ═══ GUIDE MODAL ═══ */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:200;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  backdrop-filter:blur(5px); opacity:0; pointer-events:none; transition:opacity .25s;
+}
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal-box {
+  background:#1a100a; border:1px solid rgba(244,132,95,.28);
+  border-radius:20px; padding:24px; max-width:460px; width:100%;
+  max-height:85vh; overflow-y:auto; position:relative;
+  transform:scale(.94); transition:transform .25s;
+}
+.modal-overlay.open .modal-box { transform:scale(1); }
+.modal-close {
+  position:absolute; top:14px; right:14px; background:rgba(255,255,255,.1);
+  border:none; border-radius:8px; width:30px; height:30px; font-size:16px;
+  cursor:pointer; color:#fff; display:flex; align-items:center; justify-content:center;
+}
+.modal-title { color:var(--acc); font-size:15px; font-weight:900; margin-bottom:16px; letter-spacing:1px; }
+.guide-section { margin-bottom:16px; }
+.guide-section-title { font-size:12px; font-family:var(--mono); letter-spacing:2px; color:rgba(255,255,255,.45); margin-bottom:8px; }
+.guide-row { display:flex; gap:10px; align-items:flex-start; margin-bottom:8px; }
+.guide-row:last-child { margin-bottom:0; }
+.guide-icon { font-size:18px; flex-shrink:0; }
+.guide-txt { font-size:13px; line-height:1.65; color:rgba(255,255,255,.78); }
+.guide-txt b { color:#fff; }
+.relic-table { width:100%; border-collapse:collapse; margin-top:6px; }
+.relic-table th,.relic-table td { padding:7px 10px; font-size:12px; text-align:left; border-bottom:1px solid rgba(255,255,255,.07); }
+.relic-table th { font-family:var(--mono); font-size:10px; letter-spacing:1px; color:rgba(255,255,255,.38); }
+.relic-table td:last-child { color:var(--acc); font-weight:700; font-family:var(--mono); }
+
+/* ═══ GAME SCREEN ═══ */
+#gameScreen { gap:11px; padding-top:10px; }
+.g-topbar { display:flex; justify-content:space-between; align-items:center; }
+.g-caselabel { font-family:var(--mono); font-size:11px; letter-spacing:3px; }
+.g-score { background:rgba(255,255,255,.1); border-radius:20px; padding:5px 13px; font-size:13px; font-weight:700; }
+.g-progbar { height:3px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; }
+.g-progfill { height:100%; border-radius:2px; background:linear-gradient(90deg,var(--acc),#f4c55f); transition:width .5s; }
+.g-era-badge { display:inline-flex; align-items:center; gap:6px; border-radius:20px; padding:4px 13px; font-size:12px; letter-spacing:1px; }
+.g-card {
+  background:rgba(255,255,255,.05); border-radius:18px; padding:16px;
+  border:1px solid rgba(244,132,95,.14); backdrop-filter:blur(8px);
+}
+.g-card-top { display:flex; gap:11px; align-items:center; margin-bottom:9px; }
+.g-card-icon { font-size:38px; flex-shrink:0; }
+.g-card-filelabel { font-family:var(--mono); font-size:10px; letter-spacing:2px; margin-bottom:2px; }
+.g-card-title { font-size:17px; font-weight:900; color:#fff; }
+.g-card-intro { color:rgba(255,255,255,.65); font-size:13px; line-height:1.75; font-style:italic; }
+.score-hint {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(244,132,95,.07); border:1px solid rgba(244,132,95,.2);
+  border-radius:10px; padding:9px 13px; font-size:12px;
+}
+.sh-stars { font-size:16px; flex-shrink:0; }
+.sh-text { color:rgba(255,255,255,.78); flex:1; line-height:1.5; }
+.clue-lbl { font-family:var(--mono); font-size:11px; letter-spacing:3px; }
+.clues-list { display:flex; flex-direction:column; gap:7px; }
+.clue-locked-placeholder {
+  background:rgba(255,255,255,.03); border:1px dashed rgba(255,255,255,.09);
+  border-radius:10px; padding:12px 14px;
+  display:flex; gap:10px; align-items:center;
+}
+.clp-icon { font-size:14px; color:rgba(255,255,255,.18); flex-shrink:0; }
+.clp-text { font-size:13px; color:rgba(255,255,255,.16); font-style:italic; }
+.clue-item {
+  background:rgba(244,132,95,.07); border:1px solid rgba(244,132,95,.22);
+  border-radius:10px; padding:12px 14px;
+  display:flex; gap:10px; align-items:flex-start;
+  animation:revealClue .45s cubic-bezier(.4,0,.2,1);
+}
+.clue-num { font-family:var(--mono); font-size:11px; flex-shrink:0; margin-top:3px; }
+.clue-body { font-size:13px; line-height:1.65; }
+@keyframes revealClue {
+  from { opacity:0; transform:translateX(-16px) scale(.96); }
+  to   { opacity:1; transform:translateX(0) scale(1); }
+}
+.clue-btns { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+.btn-next-clue {
+  width:100%; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13);
+  border-radius:11px; padding:12px; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:var(--serif); transition:all .2s;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.btn-next-clue:hover { background:rgba(255,255,255,.1); transform:translateY(-1px); }
+.btn-next-clue .nxt-warn { font-size:11px; font-family:var(--mono); color:#f4c55f; }
+.bubble { display:flex; gap:10px; align-items:flex-start; background:rgba(255,255,255,.05); border:1px solid rgba(244,132,95,.16); border-radius:13px; padding:12px; }
+.bubble-av { font-size:28px; flex-shrink:0; }
+.bubble-name { font-size:11px; font-weight:700; margin-bottom:4px; }
+.bubble-txt { font-size:13px; line-height:1.7; color:rgba(255,255,255,.8); font-style:italic; }
+.q-box { background:rgba(255,255,255,.07); border-radius:13px; padding:14px; border:1px solid rgba(244,132,95,.24); }
+.q-lbl { font-family:var(--mono); font-size:10px; letter-spacing:2px; margin-bottom:6px; }
+.q-text { color:#fff; font-size:15px; font-weight:700; line-height:1.65; }
+.q-mult { font-family:var(--mono); font-size:11px; margin-top:6px; }
+.opts-grid { display:flex; flex-direction:column; gap:7px; }
+@media(min-width:400px){ .opts-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; } }
+.opt-btn {
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+  border-radius:10px; padding:11px 13px; color:rgba(255,255,255,.88);
+  font-size:14px; cursor:pointer; text-align:left; font-family:var(--serif);
+  display:flex; align-items:center; gap:10px; transition:all .16s;
+}
+.opt-btn:hover:not(:disabled) { background:rgba(244,132,95,.14); transform:translateX(3px); }
+.opt-btn:disabled { cursor:default; }
+.opt-btn.correct { background:rgba(100,200,100,.2); border-color:rgba(100,200,100,.5); }
+.opt-btn.wrong   { background:rgba(220,80,80,.2);  border-color:rgba(220,80,80,.5); }
+.opt-letter {
+  width:27px; height:27px; border-radius:50%; border:2px solid var(--acc);
+  display:flex; align-items:center; justify-content:center; font-size:12px;
+  font-weight:700; flex-shrink:0; color:var(--acc); font-family:var(--mono); transition:all .2s;
+}
+.correct .opt-letter { border-color:#6dc86d; color:#6dc86d; }
+.wrong .opt-letter   { border-color:#e86d6d; color:#e86d6d; }
+.fb-banner { border-radius:14px; padding:16px; text-align:center; }
+.fb-banner.ok  { background:linear-gradient(135deg,rgba(100,200,100,.18),rgba(50,150,50,.07)); border:1px solid rgba(100,200,100,.4); }
+.fb-banner.bad { background:linear-gradient(135deg,rgba(200,80,80,.18),rgba(150,50,50,.07)); border:1px solid rgba(200,80,80,.4); }
+.fb-emoji { font-size:44px; margin-bottom:6px; }
+.fb-title { font-size:20px; font-weight:900; margin-bottom:3px; }
+.fb-title.ok { color:#6dc86d; } .fb-title.bad { color:#e86d6d; }
+.fb-sub { color:rgba(255,255,255,.58); font-size:13px; }
+.score-breakdown { background:rgba(255,255,255,.05); border-radius:11px; padding:11px 13px; display:flex; align-items:center; gap:9px; }
+.sb-stars { font-size:17px; }
+.sb-main { font-size:14px; font-weight:700; }
+.sb-detail { font-size:11px; color:rgba(255,255,255,.45); margin-top:2px; }
+.bonus-toggle { width:100%; background:rgba(255,255,255,.03); border:1px dashed rgba(244,132,95,.25); border-radius:10px; padding:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:var(--serif); transition:all .2s; }
+.bonus-toggle:hover { background:rgba(244,132,95,.07); }
+.bonus-body { background:rgba(244,132,95,.06); border:1px solid rgba(244,132,95,.16); border-radius:10px; padding:0 13px; max-height:0; overflow:hidden; transition:max-height .4s, padding .3s; }
+.bonus-body.open { max-height:250px; padding:12px 13px; }
+.bonus-lbl { font-family:var(--mono); font-size:10px; letter-spacing:2px; margin-bottom:6px; }
+.bonus-txt { font-size:13px; line-height:1.7; color:rgba(255,255,255,.78); }
+.ans-review { background:rgba(255,255,255,.04); border-radius:10px; padding:10px 12px; }
+.rev-row { display:flex; align-items:center; gap:8px; padding:5px 0; }
+.rev-row+.rev-row { border-top:1px solid rgba(255,255,255,.06); }
+
+/* ═══ ERA SUMMARY ═══ */
+.era-summary {
+  background:rgba(255,255,255,.05); border:1px solid rgba(244,132,95,.22);
+  border-radius:14px; padding:16px; text-align:center;
+}
+.es-title { color:var(--acc); font-size:12px; font-family:var(--mono); letter-spacing:2px; margin-bottom:10px; }
+.es-score { font-size:32px; font-weight:900; color:#fff; margin-bottom:4px; }
+.es-relic-status { font-size:14px; margin-bottom:10px; }
+.es-threshold-info { font-size:12px; color:rgba(255,255,255,.52); line-height:1.7; }
+
+/* ═══ RELIC UNLOCK — SPECTACULAR ═══ */
+.relic-unlock-overlay {
+  position:fixed; inset:0; z-index:300;
+  background:rgba(0,0,0,.85);
+  backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px;
+  opacity:0; pointer-events:none; transition:opacity .4s;
+}
+.relic-unlock-overlay.show { opacity:1; pointer-events:all; }
+.relic-unlock-box {
+  background:linear-gradient(160deg,#1e1008 0%,#2e1810 50%,#1e0e08 100%);
+  border:2px solid rgba(244,132,95,.6);
+  border-radius:24px; padding:32px 24px; max-width:380px; width:100%;
+  text-align:center; position:relative; overflow:hidden;
+  transform:scale(.7) translateY(40px);
+  transition:transform .5s cubic-bezier(.34,1.56,.64,1), opacity .4s;
+  box-shadow:0 0 60px rgba(244,132,95,.4), 0 0 120px rgba(244,132,95,.15);
+}
+.relic-unlock-overlay.show .relic-unlock-box {
+  transform:scale(1) translateY(0);
+}
+.ru-shimmer {
+  position:absolute; top:0; left:-60%; width:40%; height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+  animation:shimmerRelic 2s ease-in-out infinite;
+}
+.ru-sparkles { position:absolute; inset:0; pointer-events:none; }
+.ru-sp {
+  position:absolute; font-size:20px;
+  animation:sparkleFloat 2s ease-out forwards;
+  opacity:0;
+}
+.ru-eyebrow {
+  font-family:var(--mono); font-size:11px; letter-spacing:4px;
+  color:rgba(244,132,95,.7); margin-bottom:12px;
+}
+.ru-icon-wrap {
+  width:100px; height:100px; border-radius:50%;
+  background:radial-gradient(circle,rgba(244,132,95,.25) 0%,rgba(244,132,95,.05) 70%);
+  border:2px solid rgba(244,132,95,.4);
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 16px;
+  box-shadow:0 0 30px rgba(244,132,95,.4);
+  animation:pulseRelic 1.5s ease-in-out infinite;
+}
+.ru-icon-big { font-size:56px; }
+.ru-got { color:var(--acc); font-size:22px; font-weight:900; margin-bottom:6px; }
+.ru-name { color:#fff; font-size:18px; font-weight:900; margin-bottom:8px; }
+.ru-desc { color:rgba(255,255,255,.62); font-size:12px; line-height:1.65; margin-bottom:20px; }
+.ru-close {
+  background:linear-gradient(135deg,#f4845f,#d4522a); color:#fff;
+  border:none; border-radius:50px; padding:12px 32px; font-size:15px;
+  font-weight:900; cursor:pointer; font-family:var(--serif);
+  box-shadow:0 0 20px rgba(244,132,95,.4); transition:all .2s;
+  letter-spacing:1px;
+}
+.ru-close:hover { transform:scale(1.05); box-shadow:0 0 36px rgba(244,132,95,.6); }
+
+/* ═══ DOTS ═══ */
+.g-dots { display:flex; justify-content:center; gap:6px; margin-top:2px; }
+.g-dot  { height:6px; border-radius:3px; transition:all .28s; background:rgba(255,255,255,.16); }
+
+/* ═══ RESULT ═══ */
+#resultScreen { min-height:100vh; align-items:center; justify-content:center; gap:0; text-align:center; padding-top:30px; padding-bottom:60px; }
+.res-trophy { font-size:78px; margin-bottom:10px; }
+.res-closed { font-family:var(--mono); font-size:11px; letter-spacing:5px; color:var(--acc); margin-bottom:6px; }
+.res-rank { font-size:24px; font-weight:900; color:#fff; margin-bottom:4px; }
+.res-msg { color:rgba(255,255,255,.6); font-size:14px; margin-bottom:26px; line-height:1.65; max-width:320px; }
+.ring-wrap { position:relative; width:144px; height:144px; margin:0 auto 20px; }
+.ring-svg { position:absolute; inset:0; }
+.ring-inner { position:absolute; inset:18px; background:#120a06; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ring-val { color:var(--acc); font-size:30px; font-weight:900; line-height:1; }
+.ring-lbl { color:rgba(255,255,255,.35); font-size:11px; }
+.res-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; width:100%; margin-bottom:20px; }
+.res-stat { background:rgba(255,255,255,.05); border:1px solid rgba(244,132,95,.14); border-radius:12px; padding:13px 8px; }
+.rs-icon { font-size:22px; margin-bottom:4px; }
+.rs-val  { color:var(--acc); font-size:19px; font-weight:900; }
+.rs-lbl  { color:rgba(255,255,255,.38); font-size:10px; margin-top:2px; }
+.res-relics { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(244,132,95,.16); border-radius:15px; padding:14px; margin-bottom:18px; }
+.rr-title { font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--acc); margin-bottom:12px; text-align:center; }
+.rr-grid { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+.rr-item { text-align:center; width:60px; }
+.rr-icon { font-size:34px; margin-bottom:3px; filter:drop-shadow(0 0 7px rgba(244,132,95,.4)); }
+.rr-name { font-size:10px; color:rgba(255,255,255,.45); line-height:1.3; }
+.rr-item.locked .rr-icon { filter:grayscale(1); opacity:.16; }
+.rr-item.locked .rr-name { opacity:.28; }
+.res-era-table { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(244,132,95,.1); border-radius:14px; padding:14px; margin-bottom:22px; text-align:left; }
+.ret-title { font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--acc); margin-bottom:10px; }
+.ret-row { display:flex; align-items:center; gap:9px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.ret-row:last-child { border-bottom:none; }
+.ret-icon { font-size:17px; }
+.ret-name { flex:1; font-size:12px; color:rgba(255,255,255,.58); }
+.ret-pts  { font-size:12px; font-weight:700; font-family:var(--mono); }
+.ret-relic { font-size:16px; }
+
+/* ═══ PARTICLES ═══ */
+.particle { position:fixed; font-size:22px; z-index:400; pointer-events:none; animation:particleFly 1.6s ease-out forwards; }
+.confetti { position:fixed; width:10px; height:10px; border-radius:2px; z-index:400; pointer-events:none; animation:confettiFall 2s ease-in forwards; }
+
+/* ═══ KEYFRAMES ═══ */
+@keyframes float    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+@keyframes popIn    { from{transform:scale(.8);opacity:0} 60%{transform:scale(1.07)} to{transform:scale(1);opacity:1} }
+@keyframes fadeIn   { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
+@keyframes particleFly { 0%{transform:translateY(0) scale(1) rotate(0deg);opacity:1} 100%{transform:translateY(-160px) scale(.1) rotate(360deg);opacity:0} }
+@keyframes confettiFall {
+  0%{transform:translateY(-20px) rotate(0deg);opacity:1;}
+  100%{transform:translateY(120vh) rotate(720deg);opacity:0;}
+}
+@keyframes relicGlow { 0%,100%{box-shadow:0 0 8px rgba(244,132,95,.2)} 50%{box-shadow:0 0 24px rgba(244,132,95,.6)} }
+@keyframes pulseRelic { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+@keyframes shimmerRelic { 0%{left:-60%} 100%{left:120%} }
+@keyframes sparkleFloat {
+  0%{opacity:0;transform:translate(0,0) scale(0);}
+  20%{opacity:1;transform:translate(var(--tx),var(--ty)) scale(1.2);}
+  100%{opacity:0;transform:translate(var(--tx2),var(--ty2)) scale(0);}
+}
+.anim-in  { animation:fadeIn .35s ease forwards; }
+.anim-pop { animation:popIn .45s cubic-bezier(.4,0,.2,1) forwards; }
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:rgba(244,132,95,.28); border-radius:2px; }
+
+.rank-popup-overlay{position:fixed;inset:0;z-index:350;display:flex;align-items:center;justify-content:center;padding:24px;pointer-events:none;}
+.rank-popup{background:linear-gradient(160deg,#1a1008 0%,#2a1c10 50%,#1a1008 100%);border:2px solid rgba(244,184,95,.7);border-radius:20px;padding:22px 26px;max-width:300px;width:100%;text-align:center;position:relative;overflow:hidden;pointer-events:all;box-shadow:0 0 50px rgba(244,184,95,.35);opacity:0;transform:scale(.8) translateY(20px);transition:opacity .4s,transform .5s cubic-bezier(.34,1.56,.64,1);}
+.rank-popup.show{opacity:1;transform:scale(1) translateY(0);}
+.rank-popup-shimmer{position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);animation:shimmerRank 1.8s ease-in-out infinite;}
+.rp-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:4px;color:rgba(244,184,95,.7);margin-bottom:8px;}
+.rp-icon{font-size:48px;margin-bottom:8px;}
+.rp-title{color:#fff;font-size:17px;font-weight:900;margin-bottom:5px;}
+.rp-desc{color:rgba(255,255,255,.6);font-size:12px;line-height:1.6;margin-bottom:14px;}
+.rp-close{background:linear-gradient(135deg,var(--acc),#c47a3a);color:#fff;border:none;border-radius:30px;padding:9px 26px;font-size:13px;font-weight:900;cursor:pointer;font-family:var(--serif);}
+@keyframes shimmerRank{0%{left:-60%}100%{left:120%}}
+.g-rank-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.65);transition:all .3s;white-space:nowrap;}
+.g-rank-badge.highlight{border-color:rgba(244,184,95,.5);background:rgba(244,184,95,.12);color:var(--acc);animation:rankBadgePop .6s cubic-bezier(.34,1.56,.64,1);}
+@keyframes rankBadgePop{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+
+.rank-table-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;}
+.rank-table-popup{background:#1a1408;border:1.5px solid rgba(244,184,95,.5);border-radius:20px;padding:20px;max-width:360px;width:100%;max-height:80vh;overflow-y:auto;}
+.rt-title{font-size:16px;font-weight:900;color:#f4c55f;margin-bottom:14px;text-align:center;}
+.rt-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;margin-bottom:4px;}
+.rt-row.current{background:rgba(244,184,95,.18);border:1px solid rgba(244,184,95,.4);}
+.rt-row.achieved{background:rgba(100,200,100,.08);}
+.rt-icon{font-size:22px;width:32px;text-align:center;flex-shrink:0;}
+.rt-info{flex:1;}
+.rt-name{font-size:13px;font-weight:700;color:#fff;}
+.rt-req{font-size:11px;color:rgba(255,255,255,.45);font-family:var(--mono);}
+.rt-badge{font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:10px;flex-shrink:0;}
+.rt-badge.done{background:rgba(100,200,100,.2);color:#6dc86d;}
+.rt-badge.now{background:rgba(244,184,95,.25);color:#f4c55f;}
+.rt-badge.locked{color:rgba(255,255,255,.25);}
+.rt-close-btn{width:100%;margin-top:14px;border:none;border-radius:12px;padding:11px;font-size:14px;font-weight:900;cursor:pointer;background:rgba(255,255,255,.1);color:#fff;font-family:var(--serif);}
+
+/* ═══ AI 리포트 ═══ */
+.ai-report-btn {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:100%; border:none; border-radius:14px; padding:13px 20px;
+  background:linear-gradient(135deg,#1a2a4a 0%,#0d1a30 100%);
+  border:1.5px solid rgba(100,160,255,.4);
+  color:#7eb8ff; font-size:14px; font-weight:700; cursor:pointer;
+  font-family:var(--serif); letter-spacing:.5px;
+  box-shadow:0 0 20px rgba(100,160,255,.1);
+  transition:all .2s;
+}
+.ai-report-btn:hover { background:linear-gradient(135deg,#1e3560,#111f38); box-shadow:0 0 28px rgba(100,160,255,.2); }
+.ai-report-btn .ai-pulse {
+  width:8px; height:8px; border-radius:50%; background:#7eb8ff;
+  animation:aiPulse 1.5s ease-in-out infinite;
+}
+@keyframes aiPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+.ai-overlay {
+  position:fixed; inset:0; z-index:500;
+  background:rgba(0,0,0,.85); backdrop-filter:blur(6px);
+  display:flex; align-items:flex-end; justify-content:center;
+  padding:0;
+}
+.ai-panel {
+  background:linear-gradient(180deg,#0d1825 0%,#060e18 100%);
+  border:1.5px solid rgba(100,160,255,.3);
+  border-radius:24px 24px 0 0;
+  width:100%; max-width:520px;
+  max-height:88vh; overflow-y:auto;
+  padding:20px 18px 32px;
+  transform:translateY(100%);
+  transition:transform .45s cubic-bezier(.34,1.1,.64,1);
+}
+.ai-panel.show { transform:translateY(0); }
+.ai-panel-handle {
+  width:40px; height:4px; border-radius:2px;
+  background:rgba(255,255,255,.2); margin:0 auto 18px;
+}
+.ai-panel-header {
+  display:flex; align-items:center; gap:10px; margin-bottom:18px;
+}
+.ai-panel-icon { font-size:28px; }
+.ai-panel-title { font-size:18px; font-weight:900; color:#fff; }
+.ai-panel-sub { font-size:12px; color:rgba(255,255,255,.45); font-family:var(--mono); margin-top:2px; }
+
+/* 로딩 */
+.ai-loading {
+  display:flex; flex-direction:column; align-items:center;
+  gap:14px; padding:30px 0; text-align:center;
+}
+.ai-loading-dots { display:flex; gap:6px; }
+.ai-loading-dots span {
+  width:8px; height:8px; border-radius:50%; background:#7eb8ff;
+  animation:aiDot 1.2s ease-in-out infinite;
+}
+.ai-loading-dots span:nth-child(2){animation-delay:.2s}
+.ai-loading-dots span:nth-child(3){animation-delay:.4s}
+@keyframes aiDot{0%,80%,100%{transform:scale(0);opacity:.3}40%{transform:scale(1);opacity:1}}
+.ai-loading-text { font-size:13px; color:rgba(255,255,255,.5); font-family:var(--mono); }
+
+/* 리포트 섹션 */
+.ai-section {
+  border-radius:14px; padding:14px 15px; margin-bottom:12px;
+  border:1px solid;
+}
+.ai-section.strength {
+  background:rgba(100,200,100,.07);
+  border-color:rgba(100,200,100,.25);
+}
+.ai-section.weakness {
+  background:rgba(255,120,80,.07);
+  border-color:rgba(255,120,80,.25);
+}
+.ai-section.next {
+  background:rgba(100,160,255,.07);
+  border-color:rgba(100,160,255,.25);
+}
+.ai-section.summary {
+  background:rgba(244,184,95,.07);
+  border-color:rgba(244,184,95,.25);
+}
+.ai-section-header {
+  display:flex; align-items:center; gap:8px;
+  margin-bottom:10px;
+}
+.ai-section-icon { font-size:20px; }
+.ai-section-title { font-size:13px; font-weight:900; letter-spacing:.5px; }
+.ai-section.strength .ai-section-title { color:#6dc86d; }
+.ai-section.weakness .ai-section-title { color:#ff7850; }
+.ai-section.next .ai-section-title { color:#7eb8ff; }
+.ai-section.summary .ai-section-title { color:#f4c55f; }
+.ai-section-body {
+  font-size:13px; line-height:1.75; color:rgba(255,255,255,.8);
+  white-space:pre-wrap;
+}
+.ai-tag {
+  display:inline-block; padding:2px 9px; border-radius:20px;
+  font-size:11px; font-family:var(--mono); margin:2px 2px 0 0;
+}
+.ai-tag.good { background:rgba(100,200,100,.2); color:#6dc86d; }
+.ai-tag.bad  { background:rgba(255,120,80,.2);  color:#ff7850; }
+
+/* 수시확인 플로팅 버튼 */
+.ai-fab {
+  position:fixed; bottom:80px; right:16px; z-index:200;
+  width:52px; height:52px; border-radius:50%;
+  background:linear-gradient(135deg,#1a3a6a,#0d1f40);
+  border:1.5px solid rgba(100,160,255,.5);
+  color:#7eb8ff; font-size:22px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 20px rgba(0,0,0,.4), 0 0 20px rgba(100,160,255,.2);
+  transition:all .2s; display:none;
+}
+.ai-fab:hover { transform:scale(1.08); }
+.ai-fab .ai-fab-badge {
+  position:absolute; top:-3px; right:-3px;
+  width:14px; height:14px; border-radius:50%;
+  background:#ff5050; border:2px solid #0d1825;
+  animation:aiPulse 2s ease-in-out infinite;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="rank-popup-overlay" id="rankPopupOverlay" style="display:none">
+  <div class="rank-popup" id="rankPopup">
+    <div class="rank-popup-shimmer"></div>
+    <div class="rp-eyebrow">🎖️ 칭호 획득!</div>
+    <div class="rp-icon" id="rpIcon"></div>
+    <div class="rp-title" id="rpTitle"></div>
+    <div class="rp-desc" id="rpDesc"></div>
+    <button class="rp-close" onclick="closeRankPopup()">확인!</button>
+  </div>
+</div>
+
+<!-- ═══ RELIC UNLOCK OVERLAY ═══ -->
+<div class="relic-unlock-overlay" id="relicOverlay">
+  <div class="relic-unlock-box" id="relicBox">
+    <div class="ru-shimmer"></div>
+    <div class="ru-sparkles" id="ruSparkles"></div>
+    <div class="ru-eyebrow">✨ 유물 획득!</div>
+    <div class="ru-icon-wrap"><div class="ru-icon-big" id="ruIconBig"></div></div>
+    <div class="ru-got" id="ruGot"></div>
+    <div class="ru-name" id="ruNameBig"></div>
+    <div class="ru-desc" id="ruDescBig"></div>
+    <button class="ru-close" onclick="closeRelicOverlay()">🎉 보관함에 넣기!</button>
+  </div>
+</div>
+
+<!-- ═══ GUIDE MODAL ═══ -->
+<div class="modal-overlay" id="guideModal" onclick="closeGuide(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeGuideBtn()">✕</button>
+    <div class="modal-title">📖 게임 방법 안내</div>
+    <div class="guide-section">
+      <div class="guide-section-title">🔍 단서 & 점수 시스템</div>
+      <div class="guide-row"><div class="guide-icon">1️⃣</div><div class="guide-txt">각 문제는 <b>단서 3개</b>를 순서대로 공개할 수 있어요.</div></div>
+      <div class="guide-row"><div class="guide-icon">⭐</div><div class="guide-txt"><b>단서를 적게 보고 맞출수록</b> 더 높은 점수!<br>• 1번 단서만 → <b>×3배 (300점)</b><br>• 2번 단서까지 → <b>×2배 (200점)</b><br>• 3번 단서까지 → <b>×1배 (100점)</b></div></div>
+      <div class="guide-row"><div class="guide-icon">🔒</div><div class="guide-txt">다음 단서는 <b>잠겨 있어요.</b> 버튼을 눌러야 공개돼요.</div></div>
+    </div>
+    <div class="guide-section">
+      <div class="guide-section-title">🏺 유물 획득 조건</div>
+      <div class="guide-row"><div class="guide-icon">🏺</div><div class="guide-txt">시대별 <b>총 획득 점수</b>가 기준 이상이면 유물 획득!</div></div>
+      <table class="relic-table">
+        <tr><th>시대</th><th>문제 수</th><th>유물 획득 기준</th></tr>
+        <tr><td>고조선</td><td>5문제</td><td>850점 이상</td></tr>
+        <tr><td>여러 나라의 성장</td><td>6문제</td><td>1000점 이상</td></tr>
+        <tr><td>고구려</td><td>6문제</td><td>1000점 이상</td></tr>
+        <tr><td>백제</td><td>5문제</td><td>850점 이상</td></tr>
+        <tr><td>신라</td><td>5문제</td><td>850점 이상</td></tr>
+        <tr><td>통일신라</td><td>5문제</td><td>850점 이상</td></tr>
+        <tr><td>발해</td><td>4문제</td><td>700점 이상</td></tr>
+      </table>
+      <div class="guide-row" style="margin-top:8px"><div class="guide-icon">🔄</div><div class="guide-txt">점수가 부족하면 <b>시대 목록에서 재도전</b>할 수 있어요.</div></div>
+    </div>
+    <div class="guide-section">
+      <div class="guide-section-title">🗺️ 진행 방식</div>
+      <div class="guide-row"><div class="guide-icon">🔓</div><div class="guide-txt">앞 시대를 <b>완료</b>해야 다음 시대가 열려요.</div></div>
+      <div class="guide-row"><div class="guide-icon">📊</div><div class="guide-txt">모든 시대를 완료한 뒤 <b>최종 결과</b>를 확인하세요!</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NAME SCREEN ═══ -->
+<div id="nameScreen" class="screen active">
+  <div class="ns-badge">🇰🇷 한국 고대사</div>
+  <div class="ns-castle">🏛️</div>
+  <div class="ns-eyebrow">Korea History Mystery</div>
+  <h1 class="ns-title">역사 탐정단</h1>
+  <p class="ns-desc">고조선부터 남북국시대까지<br>한국 고대사의 비밀을 밝혀라!</p>
+  <div class="ns-card">
+    <label>🔍 탐정 이름을 입력하세요</label>
+    <input class="ns-input" id="nameInput" type="text" placeholder="이름 입력..." maxlength="8" autocomplete="off">
+    <div class="ns-hint">한글·영문 최대 8자 · Enter로 시작</div>
+  </div>
+  <div class="ns-howto">
+    <div class="ns-howto-title">📖 핵심 규칙</div>
+    <div class="ns-howto-row"><div class="ns-howto-icon">🔒</div><div class="ns-howto-txt"><b>단서는 잠겨 있어요.</b> 직접 열어야 보여요. 덜 볼수록 점수가 높아요!</div></div>
+    <div class="ns-howto-row"><div class="ns-howto-icon">⭐</div><div class="ns-howto-txt"><b>1번 단서 정답 = ×3배</b>, 2번까지 = ×2배, 3번까지 = ×1배</div></div>
+    <div class="ns-howto-row"><div class="ns-howto-icon">🏺</div><div class="ns-howto-txt"><b>충분한 점수</b>를 모으면 그 시대의 유물을 획득해요!</div></div>
+    <div class="ns-howto-row"><div class="ns-howto-icon">✨</div><div class="ns-howto-txt">유물 획득 시 <b>특별한 연출</b>이 펼쳐져요!</div></div>
+  </div>
+  <button class="btn-main" style="width:100%" onclick="startWithName()">수사 시작! →</button>
+  <button class="btn-guide" onclick="openGuide()">📖 자세한 게임 방법 보기</button>
+</div>
+
+<!-- ═══ ERA MAP ═══ -->
+<div id="eraScreen" class="screen">
+  <div class="em-header">
+    <div class="em-welcome" id="emWelcome"></div>
+    <div class="em-title">시대 선택</div>
+    <div class="em-sub">각 시대의 사건을 해결하고 유물을 수집하세요!</div>
+  </div>
+  <div class="em-stats">
+    <div class="em-stat"><div class="em-stat-val" id="emScore" style="color:var(--acc)">0</div><div class="em-stat-lbl">총 점수</div></div>
+    <div class="em-stat"><div class="em-stat-val" id="emCorrect" style="color:#6dc86d">0</div><div class="em-stat-lbl">정답</div></div>
+    <div class="em-stat"><div class="em-stat-val" id="emRelics" style="color:#f4c55f">0</div><div class="em-stat-lbl">유물</div></div>
+    <div class="em-stat"><div class="em-stat-val" id="emDone" style="color:rgba(255,255,255,.45)">0/7</div><div class="em-stat-lbl">완료</div></div>
+  </div>
+    <div id="eraRankDisplay" style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:10px 16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="eraRankIcon" style="font-size:24px">🔍</span>
+      <div><div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.38);margin-bottom:2px">현재 칭호</div>
+      <div id="eraRankTitle" style="font-size:13px;font-weight:700;color:#fff">견습 탐정 🔍</div></div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.38);margin-bottom:2px">다음 칭호까지</div>
+      <div id="eraRankNext" style="font-size:11px;color:var(--acc);font-family:var(--mono)">첫 문제를 풀어봐요!</div>
+    </div>
+  </div>
+<button class="btn-guide" onclick="openGuide()">📖 게임 방법 보기 · 유물 획득 기준 확인</button>
+  <div class="era-list" id="eraList"></div>
+  <div class="relic-shelf">
+    <div class="shelf-hdr">
+      <div class="shelf-title">🏺 유물 보관함</div>
+      <div class="shelf-hint">각 시대 목표 점수 달성 시 획득</div>
+    </div>
+    <div class="relics-row" id="relicsRow"></div>
+  </div>
+  <button class="btn-result" style="width:100%;margin-top:4px" onclick="showResult()">📊 최종 결과 보기</button>
+  <button id="eraAiBtn" class="ai-report-btn" style="margin-top:8px;display:none" onclick="openAiReport()"><div class="ai-pulse"></div>🤖 AI 리포트 확인하기</button>
+</div>
+
+<!-- ═══ GAME SCREEN ═══ -->
+<div id="gameScreen" class="screen">
+  <div class="g-topbar">
+    <div class="g-caselabel" id="gCaseLabel"></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+      <div class="g-score" id="gScore"></div>
+      <div class="g-rank-badge" id="gRankBadge">🔍 견습 탐정</div>
+    </div>
+  </div>
+  <div class="g-progbar"><div class="g-progfill" id="gProgFill"></div></div>
+  <div class="g-era-badge" id="gEraBadge"></div>
+  <div class="g-card">
+    <div class="g-card-top">
+      <div class="g-card-icon" id="gCardIcon"></div>
+      <div>
+        <div class="g-card-filelabel" id="gCardFile"></div>
+        <div class="g-card-title" id="gCardTitle"></div>
+      </div>
+    </div>
+    <div class="g-card-intro" id="gCardIntro"></div>
+  </div>
+  <div id="phClues">
+    <div class="score-hint"><div class="sh-stars" id="shStars"></div><div class="sh-text" id="shText"></div></div>
+    <div class="clue-lbl" id="clueLbl" style="margin-top:12px;margin-bottom:8px"></div>
+    <div class="clues-list" id="cluesList"></div>
+    <div class="clue-btns" id="cluesBtns" style="margin-top:10px"></div>
+    <!-- 단서 아래 인라인 문제 -->
+    <div id="inlineQBox" style="display:none;margin-top:14px;background:linear-gradient(135deg,rgba(244,184,95,.12) 0%,rgba(200,130,50,.08) 100%);border:2px solid rgba(244,184,95,.45);border-radius:14px;padding:16px;box-shadow:0 0 20px rgba(244,184,95,.1)">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--acc);margin-bottom:8px;display:flex;align-items:center;gap:6px"><span style="font-size:16px">❓</span> 지금 바로 추리하세요!</div>
+      <div id="inlineQText" style="font-size:15px;font-weight:900;color:#f4c55f;line-height:1.65;margin-bottom:8px;text-shadow:0 0 20px rgba(244,184,95,.3)"></div>
+      <div id="inlineScoreHint" style="font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.5);margin-bottom:12px"></div>
+      <div id="inlineOpts" style="display:flex;flex-direction:column;gap:7px"></div>
+    </div>
+  </div>
+  <div id="phQuestion" style="display:none;flex-direction:column;gap:10px">
+    <div class="bubble">
+      <div class="bubble-av">🕵️</div>
+      <div><div class="bubble-name" id="bubName1"></div><div class="bubble-txt" id="bubTxt1"></div></div>
+    </div>
+    <div class="q-box">
+      <div class="q-lbl" id="qLbl"></div>
+      <div class="q-text" id="qText"></div>
+      <div class="q-mult" id="qMult"></div>
+    </div>
+    <div class="opts-grid" id="optsGrid"></div>
+  </div>
+  <div id="phFeedback" style="display:none;flex-direction:column;gap:10px">
+    <div class="fb-banner" id="fbBanner">
+      <div class="fb-emoji" id="fbEmoji"></div>
+      <div class="fb-title" id="fbTitle"></div>
+      <div class="fb-sub"   id="fbSub"></div>
+    </div>
+    <div class="score-breakdown">
+      <div class="sb-stars" id="sbStars"></div>
+      <div><div class="sb-main" id="sbMain"></div><div class="sb-detail" id="sbDetail"></div></div>
+    </div>
+    <div class="bubble">
+      <div class="bubble-av">🕵️</div>
+      <div><div class="bubble-name" id="bubName2"></div><div class="bubble-txt" id="expTxt"></div></div>
+    </div>
+    <button class="bonus-toggle" id="bonusToggle" onclick="toggleBonus()"></button>
+    <div class="bonus-body" id="bonusBody">
+      <div class="bonus-lbl" id="bonusLbl"></div>
+      <div class="bonus-txt" id="bonusTxt"></div>
+    </div>
+    <div class="ans-review" id="ansReview"></div>
+    <div class="era-summary" id="eraSummary" style="display:none">
+      <div class="es-title">⚑ 이 시대 수사 완료!</div>
+      <div class="es-score" id="esSc"></div>
+      <div class="es-relic-status" id="esRelic"></div>
+      <div class="es-threshold-info" id="esInfo"></div>
+    </div>
+    <button class="btn-accent" id="btnNext" onclick="nextQ()"></button>
+    <button class="btn-ghost" id="btnBackMap" onclick="backToMap()">← 시대 목록으로</button>
+  </div>
+  <div class="g-dots" id="gDots"></div>
+</div>
+
+<div id="bossScreen" class="screen">
+  <div style="text-align:center;padding:16px 0 8px">
+    <div style="font-size:52px;animation:float 2s ease-in-out infinite;filter:drop-shadow(0 0 18px rgba(244,184,95,.6))">⚔️</div>
+    <div style="font-family:var(--mono);font-size:11px;letter-spacing:4px;color:var(--acc);margin-bottom:6px">FINAL MISSION</div>
+    <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:4px">최종 관문</div>
+    <div style="color:rgba(255,255,255,.52);font-size:12px;line-height:1.65" id="bossIntro"></div>
+  </div>
+  <div style="background:rgba(255,255,255,.05);border:1px solid rgba(244,184,95,.2);border-radius:12px;padding:10px 14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--acc)" id="bossProgress">문제 1 / ?</div>
+      <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#f4c55f" id="bossTotalScore">+0점</div>
+    </div>
+    <div style="height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden">
+      <div id="bossProgBar" style="height:100%;border-radius:2px;background:linear-gradient(90deg,var(--acc),#f4c55f);transition:width .4s;width:0%"></div>
+    </div>
+  </div>
+  <div id="bossQuizBox" style="background:rgba(255,255,255,.07);border:1px solid rgba(244,184,95,.3);border-radius:14px;padding:16px">
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--acc);margin-bottom:8px">⭐⭐ 정답 시 2배 점수!</div>
+    <div style="font-size:15px;font-weight:700;color:#fff;line-height:1.65;margin-bottom:14px" id="bossQuestion"></div>
+    <div id="bossOpts" style="display:flex;flex-direction:column;gap:7px"></div>
+  </div>
+  <div id="bossFeedback" style="display:none;flex-direction:column;gap:10px">
+    <div id="bossBanner" style="border-radius:14px;padding:16px;text-align:center">
+      <div id="bossEmoji" style="font-size:44px;margin-bottom:6px"></div>
+      <div id="bossTitle" style="font-size:20px;font-weight:900;margin-bottom:3px"></div>
+      <div id="bossSub" style="font-size:13px;color:rgba(255,255,255,.6)"></div>
+    </div>
+    <div style="font-family:var(--mono);font-size:13px;color:#f4c55f;text-align:center;font-weight:700" id="bossEarnedDisplay"></div>
+    <div style="background:rgba(255,255,255,.05);border-radius:11px;padding:12px;font-size:13px;line-height:1.7;color:rgba(255,255,255,.8)" id="bossExp"></div>
+    <button id="bossNextBtn" style="border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:var(--serif);letter-spacing:1px;width:100%" onclick="bossNextQuestion()"></button>
+  </div>
+  <div id="bossComplete" style="display:none;flex-direction:column;gap:12px;text-align:center">
+    <div style="font-size:60px;animation:float 2s ease-in-out infinite">🏆</div>
+    <div style="font-size:22px;font-weight:900;color:#f4c55f">최종 관문 완료!</div>
+    <div style="color:rgba(255,255,255,.7);font-size:14px;line-height:1.7" id="bossCompleteMsg"></div>
+    <div style="background:rgba(244,184,95,.12);border:1px solid rgba(244,184,95,.4);border-radius:14px;padding:16px">
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:rgba(255,255,255,.5);margin-bottom:6px">최종 관문 획득 점수</div>
+      <div style="font-size:32px;font-weight:900;color:#f4c55f" id="bossFinalScore">0점</div>
+    </div>
+    <button style="border:none;border-radius:50px;padding:14px;font-size:16px;font-weight:900;cursor:pointer;font-family:var(--serif);width:100%;background:linear-gradient(135deg,var(--acc),#c47a3a);color:#fff" onclick="goToResult()">📊 최종 결과 보기!</button>
+  </div>
+  <button class="btn-ghost" style="margin-top:4px" onclick="backToMap()">← 시대 목록으로</button>
+</div>
+
+<!-- ═══ RESULT ═══ -->
+<div id="resultScreen" class="screen">
+  <div class="res-trophy">🏆</div>
+  <div class="res-closed">Case Closed · 한국 고대사</div>
+  <div class="res-rank" id="resRank"></div>
+  <div class="res-msg"  id="resMsg"></div>
+  <div class="ring-wrap">
+    <svg class="ring-svg" viewBox="0 0 144 144">
+      <circle cx="72" cy="72" r="60" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="12"/>
+      <circle id="ringArc" cx="72" cy="72" r="60" fill="none" stroke="#f4845f" stroke-width="12"
+        stroke-linecap="round" stroke-dasharray="376.99" stroke-dashoffset="376.99"
+        transform="rotate(-90 72 72)" style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)"/>
+    </svg>
+    <div class="ring-inner"><div class="ring-val" id="ringVal">0</div><div class="ring-lbl">점</div></div>
+  </div>
+  <div class="res-stats">
+    <div class="res-stat"><div class="rs-icon">🔍</div><div class="rs-val" id="rsCnt"></div><div class="rs-lbl">정답</div></div>
+    <div class="res-stat"><div class="rs-icon">📊</div><div class="rs-val" id="rsPct"></div><div class="rs-lbl">정답률</div></div>
+    <div class="res-stat"><div class="rs-icon">🏺</div><div class="rs-val" id="rsRel"></div><div class="rs-lbl">유물</div></div>
+  </div>
+  <div class="res-relics"><div class="rr-title">🏺 수집한 유물</div><div class="rr-grid" id="rrGrid"></div></div>
+  <div class="res-era-table"><div class="ret-title">📚 시대별 수사 결과</div><div id="retRows"></div></div>
+  <button class="btn-main" style="width:100%;border-radius:50px;padding:14px 40px;font-size:16px" onclick="retryAll()">🔄 처음부터 다시 도전!</button>
+  <button class="ai-report-btn" style="margin-top:10px" onclick="openAiReport()"><div class="ai-pulse"></div>🤖 AI 학습 리포트 보기</button>
+  <button class="btn-ghost" style="margin-top:8px" onclick="backToMap()">← 시대 목록으로</button>
+</div>
+
+</div>
+
+<footer style="position:fixed;bottom:0;left:0;right:0;z-index:50;background:rgba(16,12,8,.9);backdrop-filter:blur(10px);border-top:1px solid rgba(244,132,95,.08);padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,.3);letter-spacing:1px;pointer-events:none;">
+  <span>📖</span><span>출처 · 보라쌤과 역사를 보라</span>
+</footer>
+
+<script>
+
+// ══════════════════════════════════════════
+//  SOUND ENGINE  (Web Audio API)
+// ══════════════════════════════════════════
+var audioCtx = null;
+function getAudio(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playTone(freq, type, dur, vol, delay){
+  if(vol===undefined)vol=0.18;
+  if(delay===undefined)delay=0;
+  try{
+    var ctx=getAudio();
+    var o=ctx.createOscillator();
+    var g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type=type; o.frequency.setValueAtTime(freq, ctx.currentTime+delay);
+    g.gain.setValueAtTime(0, ctx.currentTime+delay);
+    g.gain.linearRampToValueAtTime(vol, ctx.currentTime+delay+0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+delay+dur);
+    o.start(ctx.currentTime+delay); o.stop(ctx.currentTime+delay+dur+0.05);
+  }catch(e){}
+}
+function sfxCorrect(){
+  playTone(523,'sine',.1,.15);
+  playTone(659,'sine',.1,.15,0.1);
+  playTone(784,'sine',.18,.15,0.2);
+}
+function sfxWrong(){
+  playTone(300,'sawtooth',.08,.12);
+  playTone(220,'sawtooth',.18,.12,0.09);
+}
+function sfxClue(){
+  playTone(440,'sine',.08,.1);
+  playTone(550,'sine',.1,.1,0.08);
+}
+function sfxClick(){
+  playTone(600,'sine',.05,.08);
+}
+function sfxRelic(){
+  // triumphant fanfare
+  var notes=[523,659,784,1047];
+  notes.forEach(function(f,i){playTone(f,'sine',.3,.2,i*0.12);});
+  setTimeout(function(){
+    var ch=[784,988,1175,1568];
+    ch.forEach(function(f,i){playTone(f,'sine',.25,.15,i*0.1);});
+  },600);
+}
+function sfxNextQ(){
+  playTone(440,'sine',.06,.08);
+}
+
+// ══════════════════════════════════════════
+//  THRESHOLDS
+// ══════════════════════════════════════════
+// 고조선5=850, 여러나라6=1000, 고구려6=1000, 백제5=850, 신라5=850, 통일신라5=850, 발해4=700
+
+var RELIC_THRESHOLD = [850, 1000, 1000, 850, 850, 850, 700, 500];
+
+// ══════════════════════════════════════════
+//  DATA  (7 eras, 36 questions total)
+// ══════════════════════════════════════════
+var ERAS = [
+/* 0 ─ 고조선 */
+{
+  id:0, name:"고조선", period:"BCE 2333 ~ BCE 108",
+  icon:"🏔️", accent:"#f4845f",
+  bg:"linear-gradient(135deg,#1a0c06 0%,#0c0603 100%)",
+  relic:{icon:"🐻", name:"단군의 곰 토템", desc:"고조선 건국 신화 속 웅녀의 상징. 곰과 호랑이가 사람이 되길 원했던 신화가 담긴 유물."},
+  questions:[
+    {title:"고조선의 건국 신화", intro:"하늘에서 내려온 환웅과 곰이 변한 웅녀 사이에서 태어난 아이가 있다. 그 아이가 세운 나라는...", icon:"🌤️",
+     clues:["신화: 하늘신 환인의 아들 환웅이 태백산 신단수에 내려옴","탄생: 웅녀와 결합해 단군왕검 탄생","건국: BCE 2333년 아사달에 도읍을 정해 고조선 건국"],
+     q:"환웅과 웅녀 사이에서 태어나 고조선을 세운 인물은?", opts:["해모수","단군왕검","주몽","혁거세"], ans:1,
+     exp:"단군왕검이 BCE 2333년 아사달에 도읍을 정하고 고조선을 건국했어요. 단군 신화는 하늘(환웅)·땅(웅녀)과의 결합을 통해 건국의 신성함을 나타내며, 우리 민족의 뿌리를 상징해요.",
+     bonus:"단군이 1908년간 고조선을 다스렸다는 기록이 있어요. 이후 아사달로 들어가 산신이 됐다고 해요. 전국 곳곳의 '단군 성지'는 지금도 우리 민족의 정신적 뿌리예요!"},
+    {title:"8조법의 사회", intro:"고조선에는 사회 질서를 유지하는 법이 있었다. 당시 사회상을 보여주는 이 법은...", icon:"⚖️",
+     clues:["법명: 8조법 (8가지 조항으로 구성)","내용1: 사람을 죽인 자는 즉시 사형에 처함","내용2: 남에게 상처 입힌 자는 곡식으로 갚음"],
+     q:"고조선의 사회 질서를 보여주는 법으로, 현재 3개 조항이 전해지는 이 법은?", opts:["경국대전","8조법","형법","고려율"],ans:1,
+     exp:"고조선의 8조법은 생명 존중, 사유 재산 보호, 노비 존재 등 당시 사회상을 보여줘요. 현재 3개 조항만 전해지는데, 이를 통해 고조선이 계급 사회였음을 알 수 있어요.",
+     bonus:"8조법 중 '도둑질한 자는 노비로 삼는다'는 조항이 있어요. 이는 고조선에 이미 사유 재산과 노비 제도가 존재했음을 보여줘요. 상당히 발전된 사회였군요!"},
+    {title:"고조선의 세력 범위", intro:"고조선은 어디까지 영향력을 미쳤을까? 청동기 유물이 그 흔적을 알려주는데...", icon:"🗺️",
+     clues:["유물: 비파형 동검 — 한반도·만주 일대에서 발견","유물: 탁자식 고인돌 — 한반도 북부·만주 지역 분포","영역: 현재 만주 지역 + 한반도 북부를 중심으로 성장"],
+     q:"고조선의 세력 범위를 알 수 있는 대표적인 청동기 유물은?", opts:["세형 동검","비파형 동검","청동 방울","청동 거울"],ans:1,
+     exp:"비파형 동검은 악기 비파 모양의 청동검으로, 한반도·만주 지역에 분포해 고조선의 세력 범위를 알려줘요. 이후 한반도 독자적인 세형 동검으로 발전해요.",
+     bonus:"탁자식 고인돌은 거대한 돌을 책상처럼 세워 만든 무덤이에요. 수십 톤의 돌을 옮기려면 강력한 권력자가 필요했어요. 고인돌의 주인은 당시 지배층이었답니다!"},
+    {title:"위만 조선의 성립", intro:"고조선의 역사에서 중요한 변화가 일어났다. 중국에서 온 한 인물이 왕위를 차지했는데...", icon:"👑",
+     clues:["인물: 위만 — 중국 연나라 출신으로 고조선에 망명","사건: BCE 194년 준왕을 몰아내고 왕위 차지","발전: 철기 문화 적극 수용, 영토 크게 확장"],
+     q:"BCE 194년 고조선의 준왕을 몰아내고 왕위에 오른 인물은?", opts:["단군","위만","한 무제","우거왕"],ans:1,
+     exp:"위만은 중국 연나라 출신으로 고조선에 망명했다가 준왕을 몰아내고 왕이 됐어요. 위만 조선은 철기 문화를 적극 수용하고 한반도 남쪽의 여러 나라가 한나라와 교역하는 길을 막으며 성장했어요.",
+     bonus:"위만이 고조선에 올 때 상투를 틀고 조선 옷을 입었다고 해요. 그래서 학자들 사이에서 위만이 한족인지 조선인인지 논란이 있어요. 진짜 정체는 아직도 미스터리!"},
+    {title:"고조선의 멸망", intro:"한나라의 강력한 무제가 고조선을 공격했다. 치열한 전쟁 끝에 고조선은 어떻게 됐을까...", icon:"⚡",
+     clues:["원인: 위만 조선이 한나라와 주변국 사이의 교역을 방해","전쟁: BCE 109년 한 무제가 대군으로 침략","결과: 1년간 항전 후 내분으로 BCE 108년 고조선 멸망"],
+     q:"고조선이 멸망한 뒤 한나라가 설치한 행정 구역은?", opts:["삼한","한사군","삼국","고구려"],ans:1,
+     exp:"BCE 108년 고조선이 멸망하자 한나라는 그 자리에 낙랑·진번·임둔·현도 4개 군(한사군)을 설치했어요. 이후 한사군은 고구려 등 한반도 세력에 의해 점차 축소·소멸됐어요.",
+     bonus:"고조선은 내부 분열로 무너졌어요. 한나라 군대가 1년간 공격했는데도 버텼지만, 결국 신하들이 왕(우거왕)을 죽이고 항복했어요. 외부보다 내부의 배신이 더 무서웠던 거죠!"}
+  ]
+},
+/* 1 ─ 여러 나라의 성장 */
+{
+  id:1, name:"여러 나라의 성장", period:"BCE 1세기 ~ CE 3세기",
+  icon:"🌿", accent:"#7bd47a",
+  bg:"linear-gradient(135deg,#071a07 0%,#030a03 100%)",
+  relic:{icon:"🪘", name:"부여 금동 북", desc:"부여의 영고 제천 행사에 쓰인 북. 하늘에 제사 지내는 고대 신앙과 공동체 정신의 상징."},
+  questions:[
+    {title:"부여의 사회와 문화", intro:"만주 지역에서 강성한 나라가 일어났다. 하늘에 제사 지내는 큰 축제가 있었는데...", icon:"❄️",
+     clues:["위치: 만주 쑹화강 유역의 평야 지대","지배층: 마가·우가·저가·구가 등 지배자들이 나라를 함께 운영","제천: 12월에 영고(迎鼓)라는 제천 행사 개최"],
+     q:"부여의 제천 행사로 12월에 하늘에 제사를 지내던 것은?", opts:["무천","동맹","영고","수릿날"],ans:2,
+     exp:"부여는 12월에 '영고'라는 제천 행사를 열었어요. 하늘에 제사 지내고 음식을 먹으며 노래하고 춤추는 축제로, 죄수를 풀어주기도 했어요. 이런 제천 행사는 하늘을 섬기는 고대 신앙을 보여줘요.",
+     bonus:"부여에는 '1책 12법'이라는 법이 있었어요. 살인·상해·절도에 엄격한 처벌이 있었고, 특히 남의 물건을 훔치면 12배로 갚아야 했어요. 이미 2000년 전에 사유재산을 보호하는 법이 있었던 거예요!"},
+    {title:"고구려의 초기 역사", intro:"압록강 중류 지역에서 강인한 민족이 나라를 세웠다. 산간 지역이라 사냥과 전쟁이 발달했는데...", icon:"⚔️",
+     clues:["건국: 주몽(동명성왕)이 BCE 37년 졸본에서 건국","제도: 5부족 연맹체로 시작, 귀족 회의(제가 회의) 운영","풍습: 결혼 후 신랑이 신부 집에서 함께 사는 서옥제 존재"],
+     q:"고구려의 독특한 혼인 풍습으로, 신랑이 신부 집에서 살다가 자식을 낳은 뒤 데려오는 것은?", opts:["민며느리제","서옥제","순장","형사취수혼"],ans:1,
+     exp:"서옥제(데릴사위제)는 혼인 후 신랑이 신부 집 뒤편 작은 집(서옥)에서 살다가 자녀가 성장하면 아내를 데려오는 제도예요. 여성의 지위가 상대적으로 높았던 고구려 사회를 보여줘요.",
+     bonus:"주몽은 활을 잘 쏘아 '주몽(활을 잘 쏘는 자)'이라는 이름을 얻었어요. 부여에서 도망쳐 고구려를 세운 그의 이야기는 동명성왕 신화로 전해지며, 지금도 드라마·영화의 단골 소재예요!"},
+    {title:"옥저와 동예의 특징", intro:"한반도 동쪽 해안가에 두 나라가 있었다. 특이한 풍습을 가진 이 나라들은...", icon:"🌊",
+     clues:["옥저: 함경도 지역, 해산물 풍부, 민며느리제(어린 여자아이를 며느리로 미리 데려와 기름)","동예: 강원도 북부 지역, 족외혼 엄격히 지킴","동예 특산품: 단궁(짧은 활), 조랑말(과하마), 바다표범 가죽"],
+     q:"동예의 풍습으로 같은 씨족끼리는 혼인하지 않는 것을 무엇이라 하나요?", opts:["족외혼","민며느리제","서옥제","순장"],ans:0,
+     exp:"동예는 다른 씨족끼리만 혼인할 수 있는 족외혼이 엄격했어요. 또한 다른 부족의 영역을 침범하면 소·말로 배상해야 하는 '책화' 풍습이 있어 영역을 중요히 여겼어요. 공동체 질서를 매우 중시한 사회였어요.",
+     bonus:"동예의 특산물 '단궁'은 짧지만 강력한 활이에요. 중국 기록에도 나올 만큼 유명했어요. 단궁을 든 동예 전사들은 당시 아시아 최고의 궁수들이었을 거예요!"},
+    {title:"삼한의 성립", intro:"한반도 남쪽에서는 세 개의 연맹체가 자라났다. 마한·진한·변한, 이 삼한의 세계는...", icon:"🌾",
+     clues:["마한: 경기·충청·전라 지역, 54개 소국, 가장 강성","진한: 경상도 동쪽 지역, 12개 소국 (신라의 기원)","변한: 경상도 남쪽 지역, 12개 소국 (가야의 기원)"],
+     q:"삼한 중 가장 세력이 크고 54개 소국으로 이루어진 것은?", opts:["마한","진한","변한","가야"],ans:0,
+     exp:"마한은 삼한 중 가장 강성한 세력으로 54개 소국이 모인 연맹체였어요. 진한은 나중에 신라로, 변한은 가야로 발전했어요. 삼한은 정치 지도자(군장)와 제사장(천군)이 분리된 제정분리 사회였어요.",
+     bonus:"삼한에는 소도(蘇塗)라는 신성한 구역이 있었어요. 솟대(솟대)를 세운 이곳은 천군이 다스리는 성역으로, 죄인이 도망쳐 들어가도 잡을 수 없었어요. 일종의 치외법권 지역이었어요!"},
+    {title:"삼한의 경제와 문화", intro:"삼한 사람들은 어떻게 살았을까? 농사와 교역이 활발했는데...", icon:"🌱",
+     clues:["경제: 벼농사 중심 (철기 보급으로 농업 발달)","교역: 변한의 철이 낙랑·왜 등에 수출됨 — 철이 화폐처럼 사용","행사: 5월 씨뿌리기·10월 추수 후 제천 행사"],
+     q:"삼한 중 철 생산이 특히 발달해 철을 화폐처럼 사용하고 낙랑과 왜에 수출한 곳은?", opts:["마한","진한","변한","동예"],ans:2,
+     exp:"변한은 철 생산으로 유명했어요. 철을 화폐처럼 사용하고 낙랑군과 왜(일본)에 수출했어요. 변한 지역은 이후 가야로 발전하며 철 생산의 명맥을 이어갔어요.",
+     bonus:"삼한에는 5월과 10월에 큰 제천 행사가 있었어요. 밤낮으로 노래하고 술을 마시며 춤을 추는 축제였는데, 이것이 오늘날 한국의 정월대보름·추석의 원형이라는 해석도 있어요!"},
+    {title:"고대 사회의 제정분리", intro:"고대 한국 사회에서 종교 지도자와 정치 지도자가 분리됐다. 이 구조가 잘 나타나는 곳은...", icon:"⛩️",
+     clues:["개념: 정치 지도자(군장)와 종교 지도자(천군)의 역할이 따로 나뉨","삼한: 천군이 소도(신성 지역)를 다스림","의의: 세속 권력이 미치지 않는 종교적 성역 존재"],
+     q:"삼한에서 소도(신성한 구역)를 다스리며 제사를 이끈 종교 지도자는?", opts:["군장","천군","제사장","무당"],ans:1,
+     exp:"삼한의 천군은 소도라는 신성한 지역을 다스리며 제사를 주관했어요. 정치를 담당한 군장과 역할이 분리된 제정분리 사회였어요. 소도는 종교적 성역으로 죄인도 함부로 잡을 수 없었어요.",
+     bonus:"소도의 솟대(긴 장대에 새를 올린 것)는 지금도 우리 민속에 남아 있어요. 마을 입구의 장승과 솟대는 고대 소도 문화의 흔적이에요. 수천 년의 역사가 우리 일상에 살아있는 거예요!"}
+  ]
+},
+/* 2 ─ 고구려 */
+{
+  id:2, name:"고구려", period:"BCE 37 ~ CE 668",
+  icon:"🦅", accent:"#e87d5e",
+  bg:"linear-gradient(135deg,#2e0e08 0%,#120503 100%)",
+  relic:{icon:"🏹", name:"광개토대왕의 철궁", desc:"광개토대왕이 영토를 넓힐 때 사용한 활. 동아시아 최강국 고구려의 정복 정신이 담겨 있다."},
+  questions:[
+    {title:"고구려의 성장", intro:"졸본에서 시작한 고구려가 점점 강해졌다. 수도를 옮기며 세력을 넓혔는데...", icon:"🏔️",
+     clues:["초기: 주몽이 졸본(환인)에서 건국","발전: 유리왕 때 국내성(집안)으로 수도 이전","성장: 태조왕 때 옥저 정복, 왕권 강화"],
+     q:"고구려가 처음 세워진 곳은?", opts:["국내성","평양성","졸본","한양"],ans:2,
+     exp:"고구려는 주몽이 졸본(현재 중국 환인 지역)에서 세웠어요. 이후 유리왕 때 국내성(지금의 집안)으로 수도를 옮겼고, 태조왕 때 옥저를 정복하며 본격적으로 세력을 키웠어요.",
+     bonus:"고구려 사람들은 어린 시절부터 무예를 익혔어요. 귀족 자제들이 경당(학교)에서 글과 활쏘기를 함께 배웠어요. 문무를 함께 중시한 고구려 교육의 산물이 바로 광개토대왕 같은 인물이었어요!"},
+    {title:"소수림왕의 개혁", intro:"고구려가 강국이 되기 위해 내부를 다졌다. 4세기 후반, 중요한 개혁들이 이루어졌는데...", icon:"📚",
+     clues:["인물: 소수림왕 (4세기 후반 재위)","개혁1: 372년 불교를 나라 종교로 공인","개혁2: 372년 태학 설립 — 나라에서 운영하는 최초의 학교","개혁3: 373년 율령 반포 — 나라의 법률 체계를 처음 정비"],
+     q:"고구려 소수림왕 때 불교와 태학, 율령을 정비한 왕은 누구인가요?", opts:["광개토대왕","소수림왕","고국원왕","장수왕"],ans:1,
+     exp:"소수림왕은 불교 공인(372년), 태학 설립(372년, 최초의 학교), 율령 반포(373년, 법률 체계 정비)로 고구려를 강력한 중앙 국가로 만들었어요. 이 세 가지 개혁이 광개토대왕의 정복 전쟁을 가능하게 했어요.",
+     bonus:"소수림왕의 개혁은 '선대의 좋은 왕이 다음 세대의 위대한 왕을 만든다'는 교훈을 줘요. 소수림왕이 내부를 다져놨기 때문에 바로 다음 왕인 광개토대왕이 정복 전쟁을 할 수 있었거든요!"},
+    {title:"광개토대왕의 정복 활동", intro:"고구려 역사상 가장 위대한 왕이 즉위했다. 동아시아를 호령한 이 왕은...", icon:"⚔️",
+     clues:["재위: 391~413년, 18세에 즉위","정복: 요동·만주·한반도 남부까지 최대 영토 확장","비석: 장수왕이 아버지를 기리며 광개토대왕비 건립"],
+     q:"고구려의 최대 영토를 개척한 왕은?", opts:["소수림왕","장수왕","광개토대왕","을지문덕"],ans:2,
+     exp:"광개토대왕(재위 391~413)은 요동·만주·한반도 남부까지 영토를 넓혀 동아시아 최강국의 기틀을 마련했어요. 신라의 요청을 받아 왜군을 격퇴하기도 했어요. 광개토대왕비에 그 업적이 기록되어 있어요.",
+     bonus:"광개토대왕비는 광개토대왕의 아들 장수왕이 세운 4면 비석으로, 높이가 6.39m나 돼요! 비문에는 고구려의 건국 신화부터 광개토대왕의 정복 활동까지 상세히 기록되어 있어요."},
+    {title:"장수왕의 남하 정책", intro:"광개토대왕의 뒤를 이은 아들이 새로운 전략을 폈다. 수도를 남쪽으로 옮겼는데...", icon:"🏙️",
+     clues:["인물: 장수왕 (재위 413~491, 무려 79년 재위)","천도: 427년 수도를 국내성에서 평양으로 이전","정책: 남하 정책 — 475년 한성 함락, 백제·신라 압박"],
+     q:"장수왕이 427년 고구려의 수도를 옮긴 곳은?", opts:["졸본","국내성","평양","한성"],ans:2,
+     exp:"장수왕은 427년 수도를 평양으로 옮기며 한반도 지배를 본격화했어요. 475년에는 백제의 수도 한성을 함락하고 개로왕을 죽였어요. 이로써 고구려는 한반도에서 가장 넓은 영토를 차지했어요.",
+     bonus:"장수왕은 79년간 재위한 한국 역사상 가장 오래 재위한 왕이에요! 무려 18세에 즉위해 97세에 사망했다고 해요(일부 기록). '장수(長壽)왕'이라는 이름이 딱 맞는 인물이에요!"},
+    {title:"고구려의 수·당 전쟁", intro:"중국을 통일한 강대국이 고구려를 노렸다. 을지문덕의 살수 대첩이 역사에 남았는데...", icon:"🌊",
+     clues:["1차: 612년 수 양제 113만 대군 침략 → 을지문덕이 살수(청천강)에서 격퇴","2차: 수나라 계속 침략 실패 → 국력 소진으로 수나라 멸망","이후: 당 태종의 침략도 안시성에서 격퇴"],
+     q:"612년 수나라 대군을 살수(청천강)에서 격퇴한 고구려의 장군은?", opts:["연개소문","을지문덕","양만춘","온달"],ans:1,
+     exp:"을지문덕은 612년 수 양제의 113만 대군에 맞서 청천강(살수)에서 대승을 거뒀어요. 이것이 살수 대첩이에요. 수나라는 고구려 침략에 계속 실패하다 결국 멸망했어요.",
+     bonus:"을지문덕은 수나라 장군 우중문에게 시를 보내 '그대의 신기한 계략은 천문을 통달했고... 이제 멈추면 족할 것이다'라며 조롱했어요. 전장에서 시로 적을 조롱한 천재 전략가예요!"},
+    {title:"고구려의 멸망", intro:"내부 분열과 나당 연합군의 협공으로 고구려가 위기에 빠졌다. 700년의 역사가 끝났는데...", icon:"💫",
+     clues:["분열: 연개소문 사망 후 아들들의 권력 다툼","외침: 나당 연합군(신라+당나라)의 협공","결과: 668년 평양성 함락으로 고구려 멸망"],
+     q:"고구려가 668년 멸망할 때 나당 연합군을 이끈 당나라 장군의 공격을 받은 고구려의 마지막 왕은?", opts:["연개소문","보장왕","영류왕","보덕왕"],ans:1,
+     exp:"668년 나당 연합군의 협공과 내부 분열로 고구려가 멸망했어요. 연개소문 사망 후 세 아들이 싸우다 한 아들이 당나라에 투항해 내부가 무너졌어요. 보장왕이 항복하며 700년 고구려가 끝났어요.",
+     bonus:"고구려 유민들은 이후 발해 건국에 핵심 세력이 됐어요. 대조영이 고구려 유민과 말갈족을 이끌고 발해를 세운 거예요. 고구려의 정신은 발해로 이어졌답니다!"}
+  ]
+},
+/* 3 ─ 백제 */
+{
+  id:3, name:"백제", period:"BCE 18 ~ CE 660",
+  icon:"🌸", accent:"#d4a8e8",
+  bg:"linear-gradient(135deg,#160820 0%,#0a030f 100%)",
+  relic:{icon:"🧩", name:"백제 금동 대향로", desc:"부여 능산리에서 발견된 백제 최고의 예술품. 불교와 도교가 결합된 백제 문화의 정수."},
+  questions:[
+    {title:"백제의 건국과 성장", intro:"한강 유역에 새 나라가 세워졌다. 고구려 주몽의 아들이 세운 이 나라는...", icon:"🌸",
+     clues:["건국: 온조(주몽의 아들)가 BCE 18년 위례성에서 건국","성장: 3세기 고이왕 때 율령 반포, 16관등 정비","위치: 한강 유역 — 풍부한 물자와 교통 요충지"],
+     q:"백제를 건국한 인물은?", opts:["주몽","온조","박혁거세","김수로"],ans:1,
+     exp:"온조가 BCE 18년 한강 유역 위례성에서 백제를 건국했어요. 고구려를 세운 주몽의 아들로, 고구려에서 내려와 새 나라를 세웠어요. 한강 유역의 비옥한 땅이 백제 성장의 기반이 됐어요.",
+     bonus:"백제 건국 신화에는 온조 외에 비류라는 형도 있어요. 형 비류는 바닷가 미추홀에 나라를 세웠지만 땅이 습하고 물이 짜서 실패했어요. 동생 온조의 위례성이 번창하자 부끄러워 죽었다고 해요."},
+    {title:"근초고왕의 전성기", intro:"4세기 백제의 황금기가 열렸다. 강력한 왕이 왜와 손잡고 고구려를 공격했는데...", icon:"⚔️",
+     clues:["인물: 근초고왕 (4세기 후반 재위)","업적1: 고구려 고국원왕을 전사시킴 (371년)","업적2: 중국·왜와 활발한 교류, 박사 고흥이 서기 편찬"],
+     q:"371년 평양성 전투에서 고구려 고국원왕을 전사시킨 백제의 왕은?", opts:["성왕","의자왕","근초고왕","무령왕"],ans:2,
+     exp:"근초고왕은 371년 평양성 전투에서 고구려 고국원왕을 전사시킨 백제 최전성기의 왕이에요. 마한을 통합하고 요서 지방까지 진출하며 해외 무역을 활발히 했어요. 박사 고흥이 '서기'를 편찬한 것도 이때예요.",
+     bonus:"근초고왕은 일본에 아직기와 왕인을 파견했어요. 왕인이 '천자문'과 '논어'를 전한 것이 일본 문자 교육의 시작이라는 설이 있어요. 백제가 일본 고대 문화 형성에 엄청난 영향을 미쳤답니다!"},
+    {title:"백제의 위기와 재건", intro:"고구려 장수왕의 남하 정책으로 백제가 큰 위기에 빠졌다. 수도를 빼앗겼는데...", icon:"🏚️",
+     clues:["위기: 475년 장수왕의 공격으로 한성 함락, 개로왕 전사","이전: 웅진(공주)으로 수도 이전","재건: 무령왕이 22담로에 왕족 파견, 왕권 강화"],
+     q:"475년 고구려 장수왕의 공격으로 한성이 함락된 뒤 백제가 수도를 옮긴 곳은?", opts:["부여","공주(웅진)","전주","익산"],ans:1,
+     exp:"475년 고구려 장수왕이 한성을 함락하고 개로왕을 죽이자, 백제는 웅진(지금의 공주)으로 수도를 옮겼어요. 이후 무령왕이 22담로에 왕족을 파견해 지방 통제를 강화하며 백제를 재건했어요.",
+     bonus:"2011년 무령왕릉에서 발굴된 유물들은 백제 문화의 세련됨을 보여줘요. 특히 무령왕과 왕비의 금제 관장식·금귀걸이·금팔찌는 지금 봐도 놀라운 예술 수준이에요!"},
+    {title:"성왕의 사비 천도와 불교", intro:"무령왕의 뒤를 이어 성왕이 백제를 더욱 발전시켰다. 수도를 다시 옮겼는데...", icon:"🕌",
+     clues:["천도: 538년 수도를 사비(부여)로 이전, 국호를 '남부여'로","불교: 일본에 불교와 선진 문물 전파 (552년경)","결말: 관산성 전투에서 신라에 패해 전사 (554년)"],
+     q:"성왕이 538년 수도를 옮긴 곳은?", opts:["공주","부여(사비)","익산","나주"],ans:1,
+     exp:"성왕은 538년 수도를 사비(지금의 부여)로 옮기고 국호를 '남부여'로 바꿨어요. 중앙 행정 조직을 22부로 정비하고 일본에 불교를 전파했어요. 그러나 554년 관산성 전투에서 신라 복병에 의해 전사했어요.",
+     bonus:"성왕이 일본에 불교를 전파한 사건은 일본 고대사에서 매우 중요해요. 이후 일본에서 불교를 국교로 삼고 사찰을 짓는 것이 유행했는데, 이 모든 것이 백제의 영향이에요!"},
+    {title:"백제의 멸망", intro:"나당 연합군의 공격으로 백제 최후의 날이 왔다. 의자왕이 항복하는 순간...", icon:"💔",
+     clues:["원인: 의자왕 후기 정치 문란, 계백 장군의 황산벌 전투","전투: 660년 나당 연합군 — 신라 김유신 + 당나라 소정방","결말: 황산벌 패배 후 사비성 함락, 의자왕 항복"],
+     q:"660년 황산벌에서 5000명의 결사대를 이끌고 신라군에 맞서 장렬히 전사한 백제의 장군은?", opts:["계백","성충","흥수","예식진"],ans:0,
+     exp:"계백 장군은 가족을 손수 죽이고 5000명 결사대를 이끌어 황산벌에서 김유신의 5만 신라군에 맞섰어요. 네 차례나 이겼지만 결국 패배했어요. 계백과 5000 결사대의 이야기는 지금도 충절의 상징이에요.",
+     bonus:"황산벌 전투에서 신라 소년 관창이 혼자 백제 진영에 뛰어들었다가 계백에게 사로잡혔어요. 계백은 어린 관창을 살려 돌려보냈지만, 관창이 다시 뛰어들어 전사했어요. 이 이야기는 신라군의 사기를 높였어요!"}
+  ]
+},
+/* 4 ─ 신라 */
+{
+  id:4, name:"신라", period:"BCE 57 ~ CE 676",
+  icon:"👑", accent:"#f4c55f",
+  bg:"linear-gradient(135deg,#1a1506 0%,#0c0a03 100%)",
+  relic:{icon:"👑", name:"신라 금관", desc:"경주 황남대총에서 발견된 신라 금관. 출(出)자형 나뭇가지 장식이 특징인 신라 문화의 정수."},
+  questions:[
+    {title:"신라의 건국과 박·석·김 삼성", intro:"경주 지역에서 특이한 방식으로 왕이 탄생했다. 알에서 나왔다는 신화가 있는데...", icon:"🥚",
+     clues:["건국: 박혁거세가 BCE 57년 사로국 건국 (신라의 기원)","특징: 박·석·김 세 성씨가 교대로 왕위 차지 (삼성 교립)","왕호: 거서간→차차웅→이사금→마립간 순으로 변화"],
+     q:"신라 초기에 박·석·김 세 집안이 돌아가며 왕이 되던 방식은?", opts:["골품제","삼성 교립","화랑도","화백 회의"],ans:1,
+     exp:"신라 초기에는 박·석·김 세 성씨 가문이 돌아가며 왕이 되는 삼성 교립 체제였어요. 이후 내물왕 때 김씨가 왕위를 독점했어요. 신라 왕의 호칭도 거서간→차차웅→이사금→마립간→왕으로 변했어요.",
+     bonus:"신라 건국 신화에서 박혁거세는 큰 알에서 태어났고, 석탈해는 궤짝(상자)을 타고 바다에서 왔고, 김알지는 황금 상자에서 나왔어요. 세 성씨 모두 특별한 탄생 신화를 가진 거예요!"},
+    {title:"골품제도", intro:"신라에는 독특한 신분 제도가 있었다. 태어날 때부터 정해진 신분이 평생을 결정했는데...", icon:"🏛️",
+     clues:["제도: 골품제 — 혈통에 따라 신분 결정","구분: 성골(왕이 될 수 있는 최고 신분)·진골·6두품·5두품 등","제한: 신분에 따라 관직·집 크기·옷 색깔까지 제한"],
+     q:"신라 골품제에서 왕족 중 가장 높은 신분으로 왕이 될 수 있는 신분은?", opts:["진골","성골","6두품","3두품"],ans:1,
+     exp:"성골은 신라 최고 신분으로 부모 모두 왕족인 경우예요. 진골은 한쪽만 왕족인 경우로, 왕이 될 수는 없었어요(선덕여왕 이후 성골 소멸 → 진골이 왕이 됨). 6두품은 '득난'이라 불리며 관직에 한계가 있었어요.",
+     bonus:"6두품 출신 최치원은 당나라에서 과거에 합격한 천재였지만, 신라로 돌아오면 아무리 능력이 뛰어나도 6두품 이상 올라갈 수 없었어요. 골품제의 한계에 좌절한 그는 결국 은둔 생활을 택했어요."},
+    {title:"화랑도", intro:"신라에는 청소년을 위한 특별한 조직이 있었다. 나라를 지키는 인재를 키우는 이 조직은...", icon:"⚔️",
+     clues:["조직: 화랑도 — 귀족 청소년으로 구성된 수련 단체","정신: 원광법사의 세속오계(사군이충·사친이효·교우이신·임전무퇴·살생유택)","역할: 전쟁에 참여하며 삼국 통일의 주역이 됨"],
+     q:"화랑이 지켜야 할 다섯 가지 계율인 세속오계를 만든 승려는?", opts:["원효","의상","원광","자장"],ans:2,
+     exp:"원광법사가 만든 세속오계는 사군이충(충성)·사친이효(효도)·교우이신(신의)·임전무퇴(용감)·살생유택(생명 존중)이에요. 화랑도는 이 정신으로 훈련받아 김유신·관창 같은 인재를 배출했어요.",
+     bonus:"화랑 중 가장 유명한 인물이 김유신이에요. 그는 15세에 화랑이 됐고, 이후 삼국 통일의 주역이 됐어요. 그의 누이 문희가 훗날 태종 무열왕의 왕비가 되기도 했어요!"},
+    {title:"신라의 불교 공인", intro:"신라에 불교가 전래됐다. 그러나 귀족들의 반대를 넘기 위해 한 승려가 목숨을 바쳤는데...", icon:"🕊️",
+     clues:["전래: 불교가 처음 신라에 들어왔지만 귀족들이 반대함","공인: 법흥왕(527년) 때 이차돈의 순교를 계기로 공인","의의: 불교는 왕권 강화와 민심 통합의 도구로 활용"],
+     q:"527년 신라에서 불교 공인을 위해 순교한 인물은?", opts:["원효","묵호자","이차돈","자장"],ans:2,
+     exp:"이차돈은 527년 법흥왕과 비밀 협약을 맺고 불교 탄압에 맞서 죽음을 자청했어요. 참수됐을 때 흰 피가 솟구쳤다는 기적이 일어났고, 이를 본 귀족들이 불교를 공인하게 됐어요.",
+     bonus:"이차돈의 순교 사건은 불교 공인의 계기가 됐을 뿐 아니라, 왕권이 귀족을 누르는 데도 활용됐어요. 법흥왕은 불교의 왕즉불(王卽佛) 사상으로 '왕=부처'라는 권위를 세웠거든요!"},
+    {title:"진흥왕의 영토 확장", intro:"6세기 신라가 폭발적으로 성장했다. 한강 유역을 차지하고 순수비를 세운 왕은...", icon:"🗺️",
+     clues:["인물: 진흥왕 (6세기 중반 재위)","업적1: 한강 유역 확보 — 삼국 중 가장 넓은 영토","업적2: 화랑도 공인, 황룡사 건립","업적3: 전국에 순수비 4개 건립 (북한산·창녕·황초령·마운령)"],
+     q:"진흥왕이 영토 확장을 기념하여 각지에 세운 비석은?", opts:["광개토대왕비","순수비","척경비","무열왕릉비"],ans:1,
+     exp:"진흥왕은 6세기 한강 유역을 차지하고 전국에 순수비를 세워 영토 확장을 기념했어요. 화랑도를 공인하고 황룡사를 건립했으며, 대가야까지 멸망시켜 신라 최대 영토를 이뤘어요.",
+     bonus:"진흥왕이 한강을 차지한 것은 삼국 통일의 결정적 발판이었어요. 한강은 중국과 교류하는 교통 요충지였거든요. 이후 신라가 당나라와 손잡을 수 있었던 것도 한강 확보 덕분이에요!"}
+  ]
+},
+/* 5 ─ 통일신라 */
+{
+  id:5, name:"통일신라", period:"676 ~ 935",
+  icon:"🌙", accent:"#a8c8f4",
+  bg:"linear-gradient(135deg,#060e1a 0%,#03060c 100%)",
+  relic:{icon:"🔔", name:"성덕대왕신종", desc:"경덕왕이 아버지 성덕왕을 기리기 위해 제작한 종. 맑고 깊은 소리와 비천상의 아름다움으로 유명한 신라 예술의 걸작."},
+  questions:[
+    {title:"삼국 통일 완성", intro:"나당 연합으로 백제·고구려를 무너뜨린 신라. 이제 당나라를 몰아내야 했는데...", icon:"⚔️",
+     clues:["671년: 신라가 당나라 군대를 충청도에서 몰아냄","675년 매소성 전투: 당나라 20만 육군을 경기도에서 격퇴","676년 기벌포 전투: 당나라 수군을 서해에서 격퇴, 삼국 통일 완성"],
+     q:"676년 신라가 당나라 수군을 격퇴하며 삼국 통일을 완성한 전투는?", opts:["황산벌 전투","매소성 전투","기벌포 전투","살수 대첩"],ans:2,
+     exp:"신라는 675년 매소성에서 당 육군을, 676년 기벌포에서 당 수군을 격퇴해 당나라를 한반도에서 몰아냈어요. 이로써 삼국 통일이 완성됐어요. 완전한 통일은 아니지만 한민족 국가의 기반을 마련했어요.",
+     bonus:"삼국 통일 과정에서 신라가 당나라를 끌어들인 것은 '외세 의존'이라는 비판을 받기도 해요. 하지만 이후 당나라를 직접 몰아낸 것은 엄연한 자주적 통일이에요. 역사의 평가는 항상 복잡하답니다!"},
+    {title:"통일신라의 통치 제도", intro:"삼국을 통일한 신라는 체계적인 통치 제도를 정비했다. 새로운 행정·교육 제도가 만들어졌는데...", icon:"📜",
+     clues:["중앙: 집사부를 중심으로 행정을 체계화, 왕의 권력 강화","지방: 9주 5소경 제도 — 전국을 9주로 나누고 5개 소경 설치","교육: 국학(나라 학교) 설립 — 책 읽은 수준으로 관리를 뽑는 제도 시행"],
+     q:"통일신라의 지방 행정 조직으로 전국을 9주로 나누고 5개의 작은 수도를 설치한 제도는?", opts:["22담로","9주 5소경","군현제","9서당 10정"],ans:1,
+     exp:"통일신라는 전국을 9주로 나누고 5소경을 설치해 지방을 통제했어요. 5소경은 편중된 수도(경주)를 보완하기 위한 지방 거점 도시였어요. 군사 조직은 9서당 10정으로 정비했어요.",
+     bonus:"5소경 중 하나인 '서원경'이 지금의 청주예요! 국학에서는 논어·효경 등 유교 경전을 가르쳤어요. 독서삼품과는 책을 읽은 수준에 따라 관리를 선발하는 일종의 과거제 원형이었어요."},
+    {title:"원효와 의상의 불교", intro:"통일신라 불교를 빛낸 두 승려가 있었다. 민중 불교와 화엄 불교의 두 거장은...", icon:"🛕",
+     clues:["원효: '나무아미타불'만 외쳐도 극락에 간다 — 불교 대중화","원효: 해골물 사건 — 마음이 편하면 더러운 물도 맛있다는 깨달음","의상: 당나라에서 공부하고 돌아와 화엄 불교 전파, 부석사 창건"],
+     q:"누구나 '나무아미타불'만 외치면 극락에 갈 수 있다며 불교를 서민들에게 퍼뜨린 승려는?", opts:["의상","원효","자장","혜초"],ans:1,
+     exp:"원효는 '무애'(아무 거리낌 없음)를 강조하며 아미타 신앙으로 불교를 대중화했어요. 해골물 사건을 통해 '일체유심조(모든 것은 마음먹기에 달려 있다)'를 깨달았어요. 의상은 화엄 사상을 전파했어요.",
+     bonus:"원효는 파계승이 되어 요석공주와 결혼해 설총을 낳았어요. 신라에서 가장 파격적인 승려였지만, 그의 불교 철학은 동아시아 최고 수준이었어요. 당나라 고승도 원효를 인정했답니다!"},
+    {title:"신라 하대의 혼란", intro:"통일신라 후기에 왕위 다툼이 극심해졌다. 지방에서는 호족들이 세력을 키웠는데...", icon:"🌀",
+     clues:["혼란: 하대 150년간 왕 20여 명 교체, 대부분 피살·폐위","반란: 822년 김헌창의 난, 889년 원종과 애노의 난(농민 봉기)","지방: 호족들이 독립적 세력으로 성장"],
+     q:"889년 신라 하대에 농민들이 일으킨 대규모 반란은?", opts:["이자겸의 난","원종과 애노의 난","김헌창의 난","홍경래의 난"],ans:1,
+     exp:"889년 사벌주(상주)에서 원종과 애노가 지방관의 수탈에 항거해 난을 일으켰어요. 이것이 신라 하대 농민 봉기의 시작이에요. 이후 전국적으로 반란이 이어지며 신라의 지방 통제력이 무너졌어요.",
+     bonus:"신라 하대에 '3년에 한 번 왕이 바뀌었다'는 말이 있을 정도로 정치가 혼란했어요. 이 혼란 속에서 견훤은 후백제를, 궁예는 후고구려(태봉)를 세웠어요. 이것이 후삼국 시대예요!"},
+    {title:"통일신라의 문화", intro:"통일신라는 불교 예술의 황금기를 이루었다. 세계적인 문화유산들이 이 시대에 만들어졌는데...", icon:"🎨",
+     clues:["건축: 불국사·석굴암 — 경덕왕 때 김대성이 설계 (751년)","종: 성덕대왕신종(에밀레종) — 771년 완성, 120억 원짜리 걸작","음악: 향가가 발달 — 처용가·제망매가 등"],
+     q:"751년 경덕왕 때 김대성이 설계하고 건립한 불교 건축물 두 개는?", opts:["황룡사·분황사","불국사·석굴암","법주사·통도사","흥국사·봉은사"],ans:1,
+     exp:"김대성은 현생 부모를 위해 불국사를, 전생 부모를 위해 석굴암을 지었다고 해요. 불국사의 석가탑·다보탑과 석굴암의 본존불상은 신라 예술의 최고봉이에요. 지금도 유네스코 세계문화유산이랍니다!",
+     bonus:"에밀레종(성덕대왕신종)은 '에밀레'라는 소리가 나기 때문에 이런 이름이 붙었어요. 아이를 녹여 넣어 만들었다는 전설이 있지만, 실제로는 과학적으로 정밀하게 제작된 세계 최고 수준의 범종이에요!"}
+  ]
+},
+/* 6 ─ 발해 */
+{
+  id:6, name:"발해", period:"698 ~ 926",
+  icon:"🌊", accent:"#7abff4",
+  bg:"linear-gradient(135deg,#040e1a 0%,#02060c 100%)",
+  relic:{icon:"🦅", name:"발해 석등", desc:"발해 상경 용천부에서 발견된 석등. 고구려 문화를 계승한 발해의 불교 예술을 상징한다."},
+  questions:[
+    {title:"발해의 건국", intro:"고구려 멸망 후 그 유민들이 새 나라를 세웠다. 고구려 장군 출신의 대조영이 이끌었는데...", icon:"🦅",
+     clues:["인물: 대조영 — 고구려 유민 출신 장군","건국: 698년 동모산에서 진(震)나라 건국 (나중에 발해로 개칭)","구성: 고구려 유민 + 말갈족의 연합 세력"],
+     q:"698년 고구려 유민과 말갈족을 이끌고 발해를 건국한 인물은?", opts:["연개소문","대조영","대무예","대흠무"],ans:1,
+     exp:"대조영은 698년 고구려 유민과 말갈족을 이끌고 동모산에서 진(震)나라를 세웠어요. 나중에 국호를 발해로 바꿨어요. 발해는 고구려 문화를 계승한 나라로, 당나라도 그 강성함을 인정했어요.",
+     bonus:"발해는 당나라와 처음에는 긴장 관계였어요. 2대 무왕 때 당나라 산둥반도를 공격하기도 했어요! 고구려의 기개를 이어받은 당찬 나라였죠. 이후 당나라와 화해해 교류했어요."},
+    {title:"발해의 전성기", intro:"발해가 '해동성국'이라 불릴 정도로 강성해졌다. 어느 왕 때의 이야기일까...", icon:"🌟",
+     clues:["왕: 발해의 전성기를 이끈 선왕 (9세기 초)","업적: 요동 반도까지 영토 확장, 최대 영토","칭호: 당나라로부터 '해동성국(바다 동쪽의 융성한 나라)'으로 불림"],
+     q:"발해가 최대 영토를 이루며 '해동성국'이라 불린 시기의 왕은?", opts:["대조영","무왕","문왕","선왕"],ans:3,
+     exp:"발해 선왕 때 요동 반도까지 영토를 확장해 최대 전성기를 맞이했어요. 당나라로부터 '해동성국(바다 동쪽의 융성한 나라)'이라 불릴 만큼 강성했어요. 이 시기 발해의 영토는 고구려보다 넓었어요.",
+     bonus:"발해는 당나라의 제도를 많이 도입했지만, 고구려 고유의 문화도 유지했어요. 수도 상경 용천부(지금의 중국 헤이룽장성)는 당나라 장안을 본뜬 계획도시였어요."},
+    {title:"발해의 고구려 계승", intro:"발해는 스스로 고구려의 후계자임을 주장했다. 어떤 근거가 있었을까...", icon:"🏛️",
+     clues:["계승1: 일본에 보낸 국서에 '고려(고구려)의 옛 땅을 회복했다'고 표현","계승2: 고구려 문화 계승 — 온돌 사용, 말갈식 토기와 고구려식 와당 혼재","계승3: 지배층 다수가 고구려 유민 출신"],
+     q:"발해가 일본에 보낸 외교 문서에서 스스로 사용한 국호는?", opts:["발해","고려(고구려)","진국","말갈"],ans:1,
+     exp:"발해는 일본에 보낸 국서에서 스스로를 '고려(고구려)'라고 칭했어요. 이는 발해가 고구려의 후계자임을 주장한 증거예요. 온돌·기와 등 고구려 문화 요소도 발해 유적에서 발견돼요.",
+     bonus:"발해와 통일신라의 관계는 좋지 않았어요. 발해는 고구려 계승을 주장했고, 신라는 고구려를 멸망시킨 입장이라 서로 긴장했어요. 두 나라 사이에는 거의 교류가 없었답니다!"},
+    {title:"남북국 시대와 발해의 멸망", intro:"통일신라와 발해가 공존하는 시대를 무엇이라 할까? 그리고 발해는 어떻게 끝났을까...", icon:"🌅",
+     clues:["시대: 신라(남)와 발해(북)가 공존한 '남북국 시대'","학자: 조선 후기 실학자 유득공이 '발해고'에서 남북국 시대 주장","멸망: 926년 거란(요나라)의 침략으로 멸망"],
+     q:"조선 후기의 학자로 '발해고'를 지어 발해를 우리 역사로 주장한 인물은?", opts:["정약용","유득공","박지원","이익"],ans:1,
+     exp:"유득공은 발해고에서 신라·발해가 공존한 시기를 '남북국 시대'로 불러야 한다고 주장했어요. 이는 발해를 우리 역사로 인식하는 중요한 관점이에요. 발해는 926년 거란(요나라)에 멸망했어요.",
+     bonus:"발해 멸망 후 왕자 대광현이 고려로 망명해왔어요. 고려 왕건은 그를 환영하며 '왕' 씨 성을 주었어요. 고구려→발해→고려로 이어지는 한민족의 역사 흐름을 보여주는 장면이에요!"}
+  ]
+},
+{
+  id:7, name:"가야", period:"기원전 42 ~ 서기 562",
+  icon:"⚒️", accent:"#e8c87a",
+  bg:"linear-gradient(135deg,#1a1504 0%,#0c0b02 100%)",
+  relic:{icon:"⚔️",name:"가야 철 갑옷",desc:"가야에서 만든 철 갑옷. 뛰어난 철 제작 기술을 가진 가야 문명의 상징."},
+  questions:[
+    {title:"철의 나라 가야",intro:"한반도 남쪽 낙동강 유역에 철로 유명한 나라들이 있었다.",icon:"⚒️",
+     clues:["위치: 낙동강 유역 경상남도 일대의 여러 소국","특징: 뛰어난 철 제작 기술로 철 갑옷·무기 생산","교역: 철을 낙랑과 왜(일본)에 수출"],
+     q:"가야의 가장 큰 특징이자 강점은?",opts:["불교 문화","뛰어난 철 제작 기술","대규모 농업","화약 무기"],ans:1,
+     exp:"가야는 철 제작 기술이 뛰어나 질 좋은 철 갑옷·무기를 생산했어요. 이 철을 낙랑군과 왜(일본)에 수출하며 강성했어요.",
+     bonus:"가야의 철 갑옷은 당시 동아시아 최고 수준이었어요. 지금도 가야 고분에서 출토되는 갑옷과 무기를 보면 그 기술력에 깜짝 놀랄 정도예요!"},
+    {title:"가야 연맹과 멸망",intro:"가야는 하나의 통일된 나라가 아니었다. 여러 소국이 모인 연맹체였는데...",icon:"🏔️",
+     clues:["구성: 금관가야(김해)·대가야(고령) 등 여러 소국으로 이루어진 연맹","한계: 강력한 왕권을 가진 통일 국가를 이루지 못함","멸망: 562년 대가야가 신라에 정복"],
+     q:"가야가 신라·백제보다 먼저 멸망한 가장 큰 이유는?",opts:["철이 부족해서","통일된 왕국을 이루지 못해서","불교를 받아들이지 않아서","수도가 없어서"],ans:1,
+     exp:"가야는 금관가야·대가야 등 여러 소국의 연맹체였어요. 강력한 중앙집권 왕국을 이루지 못해 신라에 하나씩 정복됐어요.",
+     bonus:"가야 음악의 흔적이 지금도 남아 있어요! 가야의 악기 '가야금'이 바로 그것이에요. 가야 출신 악사 우륵이 신라에 망명해 가야금을 전했답니다!"}
+  ]
+}
+];
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+
+var RANK_DEFS = [
+  {min:999,needAllRelics:true, needAllCorrect:false,icon:'🏺',short:'유물 수집가', title:'전설의 유물 수집가 🏺', desc:'8개 시대 유물 모두 획득! 국립박물관 관장!'},
+  {min:38, needAllRelics:false,needAllCorrect:true, icon:'🌟',short:'완벽한 탐정', title:'완벽한 역사 탐정 🌟',   desc:'38문제 전부 정답! 한국 고대사를 완벽하게 꿰뚫었어요!'},
+  {min:36, needAllRelics:false,needAllCorrect:false,icon:'👑',short:'역사 마스터', title:'역사 마스터 👑',         desc:'36문제 이상! 최고 수준의 역사 지식이에요!'},
+  {min:33, needAllRelics:false,needAllCorrect:false,icon:'🏆',short:'수석 탐정',   title:'수석 탐정 🏆',           desc:'33문제 이상! 탁월한 역사 감각이에요!'},
+  {min:29, needAllRelics:false,needAllCorrect:false,icon:'🥇',short:'베테랑 탐정', title:'베테랑 탐정 🥇',         desc:'29문제 이상! 노련한 탐정 실력이에요!'},
+  {min:24, needAllRelics:false,needAllCorrect:false,icon:'🥈',short:'실력파 탐정', title:'실력파 탐정 🥈',         desc:'24문제 이상! 날카로운 역사 감각이에요!'},
+  {min:18, needAllRelics:false,needAllCorrect:false,icon:'🥉',short:'신입 탐정',   title:'신입 탐정 🥉',           desc:'18문제 이상! 탐정의 실력이 보여요!'},
+  {min:12, needAllRelics:false,needAllCorrect:false,icon:'🔎',short:'초보 탐정',   title:'초보 탐정 🔎',           desc:'12문제 이상! 탐정의 길에 들어섰어요!'},
+  {min:6,  needAllRelics:false,needAllCorrect:false,icon:'📋',short:'수습 탐정',   title:'수습 탐정 📋',           desc:'6문제 이상! 탐정 생활이 시작됐어요!'},
+  {min:1,  needAllRelics:false,needAllCorrect:false,icon:'📌',short:'견습생',       title:'견습생 📌',              desc:'첫 정답! 이제 시작이에요!'},
+  {min:0,  needAllRelics:false,needAllCorrect:false,icon:'🔍',short:'견습 탐정',   title:'견습 탐정 🔍',           desc:'단서를 모아 사건을 해결해봐요!'}
+];
+
+var BOSS_DATA = {
+  letters:['고','조','선','삼','국','통','일'],
+  hint:'이 글자들로 한국 고대사의 흐름을 맞춰보세요!',
+  intro:'고조선부터 남북국시대까지 핵심 지식 총결산! 정답마다 기본 점수의 2배!'
+};
+var BOSS_QUESTIONS = [
+  {q:'광개토대왕의 업적으로 올바른 것은?',opts:['한강 유역 최초 확보','살수 대첩으로 수나라 격퇴','요동·만주까지 영토 확장','평양으로 수도 이전'],ans:2,exp:'광개토대왕은 요동·만주·한반도 남부까지 영토를 넓혀 동아시아 최강국을 만들었어요!'},
+  {q:'신라 골품제에서 왕이 될 수 있었던 신분은?',opts:['6두품','진골','성골','평민'],ans:2,exp:'성골은 부모 모두 왕족인 최고 신분이에요. 선덕여왕 이후 성골이 소멸되어 진골이 왕이 됐어요!'},
+  {q:'발해를 세운 인물과 그의 출신은?',opts:['대조영 - 고구려 유민','왕건 - 신라 귀족','궁예 - 신라 왕족','견훤 - 백제 유민'],ans:0,exp:'대조영은 고구려 유민 출신으로 698년 발해를 세웠어요. 해동성국으로 불릴 만큼 강성했어요!'},
+  {q:'삼국 통일을 완성한 마지막 전투는?',opts:['황산벌 전투','매소성 전투','기벌포 전투','살수 대첩'],ans:2,exp:'676년 기벌포 전투에서 당나라 수군을 격퇴하며 삼국 통일이 완성됐어요!'}
+];
+
+
+
+// ── 칭호·보스 시스템 ──
+var currentRankIdx = -1;
+function getRankNow(){
+  var allQ=ERAS.reduce(function(s,e){return s+e.questions.length;},0);
+  var relics=eraState.filter(function(e){return e.relicEarned;}).length;
+  for(var i=0;i<RANK_DEFS.length;i++){
+    var r=RANK_DEFS[i];
+    if(r.needAllRelics && relics===ERAS.length) return i;
+    if(r.needAllCorrect && totalCorrect===allQ && !r.needAllRelics) return i;
+    if(!r.needAllRelics&&!r.needAllCorrect&&totalCorrect>=r.min) return i;
+  }
+  return RANK_DEFS.length-1;
+}
+function updateRankBadge(animate){
+  var idx=getRankNow(); var r=RANK_DEFS[idx];
+  var badge=document.getElementById('gRankBadge');
+  if(badge) badge.textContent=r.icon+' '+r.short;
+  var ei=document.getElementById('eraRankIcon'), et=document.getElementById('eraRankTitle'), en=document.getElementById('eraRankNext');
+  if(ei) ei.textContent=r.icon;
+  if(et) et.textContent=r.title+' '+r.icon;
+  if(en){
+    var nextR=idx>0?RANK_DEFS[idx-1]:null;
+    if(!nextR){ en.textContent='최고 칭호 달성! ✨'; }
+    else if(nextR.needAllRelics){ en.textContent='유물 모두 획득하면!'; }
+    else if(nextR.needAllCorrect){ en.textContent='모두 정답이면!'; }
+    else{ en.textContent=(nextR.min-totalCorrect)+'문제 더 맞히면!'; }
+  }
+  if(animate && idx<currentRankIdx && currentRankIdx!==-1){
+    if(badge){ badge.classList.remove('highlight'); void badge.offsetWidth; badge.classList.add('highlight'); }
+    showRankPopup(r);
+  }
+  currentRankIdx=idx;
+}
+function showRankPopup(r){
+  try{playTone(880,'sine',.07,.15);playTone(1100,'sine',.09,.15,.1);playTone(1320,'sine',.16,.15,.2);}catch(e){}
+  var overlay=document.getElementById('rankPopupOverlay'), popup=document.getElementById('rankPopup');
+  if(!overlay||!popup) return;
+  document.getElementById('rpIcon').textContent=r.icon;
+  document.getElementById('rpTitle').textContent=r.title;
+  document.getElementById('rpDesc').textContent=r.desc;
+  overlay.style.display='flex';
+  setTimeout(function(){popup.classList.add('show');},30);
+  try{spawnParticles(12,[r.icon,'⭐','✨','🌟']);}catch(e){}
+}
+function closeRankPopup(){
+  try{sfxClick();}catch(e){}
+  var p=document.getElementById('rankPopup');
+  if(p) p.classList.remove('show');
+  setTimeout(function(){var o=document.getElementById('rankPopupOverlay');if(o) o.style.display='none';},400);
+}
+function checkAllErasDone(){ return ERAS.every(function(e,i){return eraState[i].done;}); }
+var bossQIdx=0, bossTotalEarned=0;
+function launchBossScreen(){
+  try{playTone(440,'sine',.1,.15);playTone(554,'sine',.1,.15,.1);playTone(659,'sine',.18,.15,.2);}catch(e){}
+  bossQIdx=0; bossTotalEarned=0;
+  var introEl=document.getElementById('bossIntro');
+  if(introEl) introEl.textContent=BOSS_DATA.intro;
+  document.getElementById('bossTotalScore').textContent='+0점';
+  document.getElementById('bossFeedback').style.display='none';
+  document.getElementById('bossComplete').style.display='none';
+  document.getElementById('bossQuizBox').style.display='block';
+  showScreen('bossScreen');
+  renderBossQuestion();
+}
+function renderBossQuestion(){
+  var q=BOSS_QUESTIONS[bossQIdx], total=BOSS_QUESTIONS.length;
+  document.getElementById('bossProgress').textContent='문제 '+(bossQIdx+1)+' / '+total;
+  document.getElementById('bossProgBar').style.width=(bossQIdx/total*100)+'%';
+  document.getElementById('bossQuestion').textContent=q.q;
+  var optsBox=document.getElementById('bossOpts'); optsBox.innerHTML='';
+  q.opts.forEach(function(opt,i){
+    var btn=document.createElement('button');
+    btn.style.cssText='background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:11px 13px;color:rgba(255,255,255,.9);font-size:13px;cursor:pointer;text-align:left;font-family:inherit;display:flex;align-items:center;gap:9px;transition:all .16s;width:100%';
+    var ltr=document.createElement('span');
+    ltr.style.cssText='min-width:26px;height:26px;border-radius:50%;border:2px solid var(--acc);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;color:var(--acc);font-family:monospace';
+    ltr.textContent=String.fromCharCode(65+i);
+    btn.appendChild(ltr); btn.appendChild(document.createTextNode(opt));
+    btn.onmouseover=function(){if(!btn.disabled)btn.style.background='rgba(244,184,95,.14)';};
+    btn.onmouseout=function(){if(!btn.disabled)btn.style.background='rgba(255,255,255,.06)';};
+    btn.onclick=function(){handleBossAnswer(i);};
+    optsBox.appendChild(btn);
+  });
+  document.getElementById('bossFeedback').style.display='none';
+  document.getElementById('bossQuizBox').style.display='block';
+}
+function handleBossAnswer(idx){
+  var q=BOSS_QUESTIONS[bossQIdx], correct=(idx===q.ans), earned=correct?200:0;
+  bossTotalEarned+=earned;
+  if(correct){totalScore+=earned;try{sfxCorrect();}catch(e){}try{spawnParticles(18,['🎉','⭐','🌟','✨','🏆','🎊']);}catch(e){}}
+  else{try{sfxWrong();}catch(e){}};
+  var opts=document.getElementById('bossOpts').children;
+  for(var i=0;i<opts.length;i++){
+    opts[i].disabled=true;
+    if(i===q.ans){opts[i].style.background='rgba(100,200,100,.25)';opts[i].style.borderColor='rgba(100,200,100,.6)';}
+    else if(i===idx&&!correct){opts[i].style.background='rgba(220,80,80,.25)';opts[i].style.borderColor='rgba(220,80,80,.6)';}
+  }
+  var bb=document.getElementById('bossBanner');
+  bb.style.background=correct?'linear-gradient(135deg,rgba(100,200,100,.2),rgba(50,150,50,.08))':'linear-gradient(135deg,rgba(200,80,80,.2),rgba(150,50,50,.08))';
+  bb.style.border=correct?'1px solid rgba(100,200,100,.4)':'1px solid rgba(200,80,80,.4)';
+  document.getElementById('bossEmoji').textContent=correct?'🎉':'😅';
+  document.getElementById('bossTitle').textContent=correct?'정답! 2배 점수!':'아쉬워요!';
+  document.getElementById('bossTitle').style.color=correct?'#6dc86d':'#e86d6d';
+  document.getElementById('bossSub').textContent=correct?'+200점 획득! 🔥':'정답은 "'+q.opts[q.ans]+'"이에요';
+  document.getElementById('bossEarnedDisplay').textContent=correct?'⭐⭐ 2배 점수 +200점!':'';
+  document.getElementById('bossExp').textContent=q.exp;
+  document.getElementById('bossTotalScore').textContent='+'+bossTotalEarned+'점';
+  var nb=document.getElementById('bossNextBtn'), isLast=(bossQIdx>=BOSS_QUESTIONS.length-1);
+  nb.textContent=isLast?'🏁 결과 확인!':'다음 문제 →';
+  nb.style.background='linear-gradient(135deg,var(--acc),#c47a3a)'; nb.style.color='#fff';
+  document.getElementById('bossQuizBox').style.display='none';
+  document.getElementById('bossFeedback').style.display='flex';
+  document.getElementById('bossFeedback').style.flexDirection='column';
+  document.getElementById('bossFeedback').style.gap='10px';
+  updateRankBadge(true);
+}
+function bossNextQuestion(){
+  try{sfxClick();}catch(e){}
+  bossQIdx++;
+  if(bossQIdx<BOSS_QUESTIONS.length){ renderBossQuestion(); }
+  else { showBossComplete(); }
+}
+function showBossComplete(){
+  try{sfxRelic();}catch(e){}
+  document.getElementById('bossFeedback').style.display='none';
+  document.getElementById('bossQuizBox').style.display='none';
+  var correct_count=Math.round(bossTotalEarned/200), total=BOSS_QUESTIONS.length;
+  var msg=correct_count===total?playerName+' 탐정, 완벽해요! 🌟':correct_count+'/'+ total+' 정답! 훌륭해요! 🎉';
+  document.getElementById('bossCompleteMsg').textContent=msg;
+  document.getElementById('bossFinalScore').textContent='+'+bossTotalEarned+'점';
+  var bc=document.getElementById('bossComplete');
+  bc.style.display='flex'; bc.style.flexDirection='column'; bc.style.gap='12px';
+  try{spawnParticles(25,['🏆','⭐','✨','🌟','🎊','💎','👑']);}catch(e){}
+  setTimeout(function(){try{playTone(523,'sine',.15,.2);playTone(659,'sine',.15,.2,.15);playTone(784,'sine',.15,.2,.3);playTone(1047,'sine',.3,.2,.45);}catch(e){}},200);
+  document.getElementById('bossProgBar').style.width='100%';
+  updateRankBadge(true);
+}
+function goToResult(){try{sfxClick();}catch(e){}showResult();}
+
+// ── 칭호 테이블 팝업 ──
+function openRankTable(){
+  var rows=document.getElementById('rankTableRows');
+  rows.innerHTML='';
+  var curIdx=getRankNow();
+  var allQ=ERAS.reduce(function(s,e){return s+e.questions.length;},0);
+  var totalRelics=ERAS.length;
+  var defs=RANK_DEFS.slice().reverse();
+  defs.forEach(function(r,revI){
+    var i=RANK_DEFS.length-1-revI;
+    var div=document.createElement('div');
+    var isCurrent=(i===curIdx);
+    var isAchieved=false;
+    if(r.needAllRelics) isAchieved=(eraState.filter(function(e){return e.relicEarned;}).length===totalRelics);
+    else if(r.needAllCorrect) isAchieved=(totalCorrect===allQ);
+    else isAchieved=(totalCorrect>=r.min);
+    div.className='rt-row'+(isCurrent?' current':'')+(isAchieved&&!isCurrent?' achieved':'');
+    var req=r.needAllRelics?'모든 유물 획득':r.needAllCorrect?'전 문제 정답':r.min===0?'시작':r.min+'문제 이상 정답';
+    div.innerHTML='<div class="rt-icon">'+r.icon+'</div>'
+      +'<div class="rt-info"><div class="rt-name">'+r.title+'</div><div class="rt-req">'+req+'</div></div>'
+      +'<div class="rt-badge '+(isCurrent?'now':isAchieved?'done':'locked')+'">'+(isCurrent?'◀ 현재':isAchieved?'달성':'잠금')+'</div>';
+    rows.appendChild(div);
+  });
+  document.getElementById('rankTableOverlay').style.display='flex';
+}
+function closeRankTable(){document.getElementById('rankTableOverlay').style.display='none';}
+
+// ── 인라인 문제 표시 ──
+function showInlineQuestion(){
+  var q=ERAS[curEraId].questions[curQIdx];
+  var box=document.getElementById('inlineQBox');
+  var qtxt=document.getElementById('inlineQText');
+  var opts_div=document.getElementById('inlineOpts');
+  if(!box||!qtxt||!opts_div) return;
+  qtxt.textContent=q.q;
+  opts_div.innerHTML='';
+  q.opts.forEach(function(opt,i){
+    var btn=document.createElement('button');
+    btn.style.cssText='background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:10px 13px;color:rgba(255,255,255,.9);font-size:13px;cursor:pointer;text-align:left;font-family:inherit;display:flex;align-items:center;gap:9px;transition:all .16s;width:100%';
+    var ltr=document.createElement('span');
+    ltr.style.cssText='min-width:26px;height:26px;border-radius:50%;border:2px solid var(--acc);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;color:var(--acc);font-family:monospace';
+    ltr.textContent=String.fromCharCode(65+i);
+    btn.appendChild(ltr);btn.appendChild(document.createTextNode(opt));
+    btn.onmouseover=function(){if(!btn.disabled)btn.style.background='rgba(244,184,95,.12)';};
+    btn.onmouseout=function(){if(!btn.disabled)btn.style.background='rgba(255,255,255,.06)';};
+    btn.onclick=function(){handleAnswer(i);};
+    opts_div.appendChild(btn);
+  });
+  var sh=document.getElementById('inlineScoreHint');
+  if(sh){
+    var si=scoreInfo(curClue);
+    sh.textContent=si.stars+' 현재 '+si.mult+'배 점수 ('+si.pts+'점)';
+  }
+  box.style.display='block';
+}
+function hideInlineQuestion(){var b=document.getElementById('inlineQBox');if(b)b.style.display='none';}
+function autoRevealNextClueAndBlink(){
+  curAnswered=false; curCorrect=false;
+  var q=ERAS[curEraId].questions[curQIdx];
+  if(curClue<q.clues.length-1){
+    curClue++;
+    renderCluesPhase();
+    var cl=document.getElementById('cluesList');
+    if(cl){
+      var times=0;
+      var blink=setInterval(function(){
+        cl.style.opacity=cl.style.opacity==='0'?'1':'0';
+        times++;if(times>=4){clearInterval(blink);cl.style.opacity='1';}
+      },220);
+    }
+    try{sfxClue();}catch(e){}
+  }
+  showPhase('clues');
+  showInlineQuestion();
+}
+
+
+// ── AI 리포트 시스템 ──────────────────────────────────────────
+
+
+
+// 문제 풀면 FAB 버튼 표시 + 캐시 무효화
+
+
+// ── 🍌 바나나 탐정 AI 리포트 ──────────────────────────────
+var aiReportCache = null;
+var aiReportGenerating = false;
+
+function buildGameDataSummary(){
+  var allQ=ERAS.reduce(function(s,e){return s+e.questions.length;},0);
+  var lines=[];
+  lines.push('학생이름: '+playerName);
+  lines.push('총문제: '+allQ+'개, 정답: '+totalCorrect+'개, 점수: '+totalScore+'점');
+  lines.push('현재칭호: '+RANK_DEFS[getRankNow()].title);
+  lines.push('');
+  ERAS.forEach(function(era,ei){
+    var st=eraState[ei];
+    var eraCorrect=0, wrongTitles=[], clueDetails=[];
+    era.questions.forEach(function(q,qi){
+      var key=ei+'_'+qi;
+      var qs=qState[key];
+      if(!qs)return;
+      if(qs.correct){eraCorrect++;}
+      else{wrongTitles.push(q.title);}
+      clueDetails.push(q.title+'(단서'+qs.clueUsed+'개,'+(qs.correct?'정답':'오답')+')');
+    });
+    lines.push('['+era.name+'] '+eraCorrect+'/'+era.questions.length+'정답'+(st.relicEarned?' 유물✅':''));
+    if(wrongTitles.length>0) lines.push('  오답: '+wrongTitles.join(', '));
+    if(clueDetails.length>0) lines.push('  '+clueDetails.join(' / '));
+  });
+  return lines.join('\n');
+}
+
+function openAiReport(){
+  try{sfxClick();}catch(e){}
+  var overlay=document.getElementById('aiOverlay');
+  var panel=document.getElementById('aiPanel');
+  if(!overlay||!panel)return;
+  overlay.style.display='flex';
+  setTimeout(function(){panel.classList.add('show');},30);
+  if(aiReportCache&&!aiReportGenerating){renderAiReport(aiReportCache);}
+  else if(!aiReportGenerating){generateAiReport();}
+}
+
+function closeAiReport(){
+  try{sfxClick();}catch(e){}
+  var panel=document.getElementById('aiPanel');
+  if(panel)panel.classList.remove('show');
+  setTimeout(function(){var o=document.getElementById('aiOverlay');if(o)o.style.display='none';},400);
+}
+
+function generateAiReport(){
+  if(aiReportGenerating)return;
+  aiReportGenerating=true; aiReportCache=null;
+  document.getElementById('aiReportContent').innerHTML=
+    '<div class="ai-loading"><div class="ai-loading-dots"><span></span><span></span><span></span></div>'+
+    '<div style="font-size:32px;margin:8px 0">🍌🕵️</div>'+
+    '<div class="ai-loading-text">바나나 탐정이 분석 중이에요...<br><span style="font-size:11px;opacity:.6">학습 데이터를 꼼꼼히 살펴보고 있어요!</span></div></div>';
+
+  var gameData=buildGameDataSummary();
+  var curRank=RANK_DEFS[getRankNow()];
+  var nextRankIdx=getRankNow()-1;
+  var nextRank=nextRankIdx>=0?RANK_DEFS[nextRankIdx]:null;
+  var allQ=ERAS.reduce(function(s,e){return s+e.questions.length;},0);
+
+  var prompt=
+    '당신은 "바나나 탐정"이라는 친근한 AI 학습 코치예요. 중학교 역사 선생님처럼 따뜻하고 구체적인 피드백을 한국어로 작성하세요.\n\n'+
+    '=== 학생 학습 데이터 ===\n'+gameData+'\n\n'+
+    '=== 지침 ===\n'+
+    '- 반드시 학생 이름('+playerName+')을 자연스럽게 호칭하세요\n'+
+    '- 잘한 부분은 구체적으로 칭찬하고, 부족한 부분은 격려하며 방향을 제시하세요\n'+
+    '- 각 섹션은 2-4문장, 쉬운 말로 명확하게\n'+
+    '- 다음 칭호: '+(nextRank?nextRank.title:'최고 칭호 달성!')+'\n\n'+
+    '다음 JSON만 응답 (다른 텍스트 없이):\n'+
+    '{\n'+
+    '  "summary": "전체 평가 2-3문장. 이름 포함. 현재 칭호와 점수 언급",\n'+
+    '  "strength_title": "잘하는 부분 제목 8자이내",\n'+
+    '  "strength": "구체적으로 어떤 시대/문제를 잘 맞혔는지, 단서를 적게 쓴 경우 칭찬",\n'+
+    '  "strength_tags": ["키워드1","키워드2","키워드3"],\n'+
+    '  "weakness_title": "보완할 부분 제목 8자이내",\n'+
+    '  "weakness": "어떤 시대/주제가 어려웠는지, 어떻게 공부하면 좋은지 구체적 조언",\n'+
+    '  "weakness_tags": ["키워드1","키워드2"],\n'+
+    '  "next_title": "다음 목표 제목 8자이내",\n'+
+    '  "next": "다음 칭호 달성을 위한 구체적 학습 전략. 실천 가능한 팁 1-2가지 포함"\n'+
+    '}';
+
+  // Gemini Nano 시도 → 실패시 Claude API
+  function tryGeminiNano(){
+    if(window.ai&&window.ai.languageModel){
+      window.ai.languageModel.capabilities().then(function(cap){
+        if(cap.available==='readily'||cap.available==='after-download'){
+          window.ai.languageModel.create({systemPrompt:'당신은 바나나 탐정이라는 친근한 AI 학습 코치입니다.'})
+          .then(function(session){
+            return session.prompt(prompt);
+          })
+          .then(function(text){
+            aiReportGenerating=false;
+            text=text.replace(/^```json\s*/,'').replace(/```\s*$/,'').trim();
+            try{var r=JSON.parse(text);aiReportCache=r;renderAiReport(r);}
+            catch(e){tryClaudeApi();}
+          })
+          .catch(function(){tryClaudeApi();});
+        } else { tryClaudeApi(); }
+      }).catch(function(){tryClaudeApi();});
+    } else { tryClaudeApi(); }
+  }
+
+  function tryClaudeApi(){
+    fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        messages:[{role:'user',content:prompt}]})
+    })
+    .then(function(res){return res.json();})
+    .then(function(data){
+      aiReportGenerating=false;
+      var text='';
+      if(data.content&&data.content[0]&&data.content[0].text){
+        text=data.content[0].text.trim().replace(/^```json\s*/,'').replace(/```\s*$/,'').trim();
+      }
+      try{var r=JSON.parse(text);aiReportCache=r;renderAiReport(r);}
+      catch(e){
+        document.getElementById('aiReportContent').innerHTML=
+          '<div style="padding:20px;text-align:center;color:rgba(255,255,255,.5);font-size:13px">'+
+          '<div style="font-size:40px;margin-bottom:10px">🍌😅</div>바나나 탐정이 잠시 쉬고 있어요.<br>'+
+          '<button onclick="aiReportCache=null;generateAiReport()" style="margin-top:12px;padding:8px 20px;border:1px solid rgba(255,255,255,.2);border-radius:20px;background:transparent;color:rgba(255,255,255,.7);cursor:pointer;font-size:13px">다시 시도</button></div>';
+      }
+    })
+    .catch(function(){
+      aiReportGenerating=false;
+      document.getElementById('aiReportContent').innerHTML=
+        '<div style="padding:20px;text-align:center;color:rgba(255,255,255,.5);font-size:13px">'+
+        '<div style="font-size:40px;margin-bottom:10px">🍌📡</div>연결이 안 됐어요.<br>'+
+        '<button onclick="aiReportCache=null;generateAiReport()" style="margin-top:12px;padding:8px 20px;border:1px solid rgba(255,255,255,.2);border-radius:20px;background:transparent;color:rgba(255,255,255,.7);cursor:pointer;font-size:13px">다시 시도</button></div>';
+    });
+  }
+
+  tryGeminiNano();
+}
+
+function renderAiReport(report){
+  var curRank=RANK_DEFS[getRankNow()];
+  var nextRankIdx=getRankNow()-1;
+  var nextRank=nextRankIdx>=0?RANK_DEFS[nextRankIdx]:null;
+  var allQ=ERAS.reduce(function(s,e){return s+e.questions.length;},0);
+
+  var html=
+    // 바나나 탐정 헤더
+    '<div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(255,220,50,.12),rgba(200,160,0,.06));border:1px solid rgba(255,220,50,.25);border-radius:16px;padding:14px 16px;margin-bottom:14px">'+
+    '<div style="font-size:44px;line-height:1;filter:drop-shadow(0 2px 8px rgba(255,220,50,.4))">🍌🕵️</div>'+
+    '<div><div style="font-size:15px;font-weight:900;color:#ffe040">바나나 탐정</div>'+
+    '<div style="font-size:11px;color:rgba(255,255,255,.5);font-family:var(--mono);margin-top:2px">AI LEARNING COACH</div>'+
+    '<div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">'+escHtml(playerName)+' 탐정의 학습 리포트</div></div></div>'+
+
+    // 종합 평가
+    '<div class="ai-section summary">'+
+    '<div class="ai-section-header"><div class="ai-section-icon">📋</div>'+
+    '<div class="ai-section-title">종합 평가</div></div>'+
+    '<div class="ai-section-body">'+escHtml(report.summary)+'</div></div>'+
+
+    // 진행도 바
+    '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:13px 14px;margin-bottom:12px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+    '<span style="font-size:13px;color:#fff">'+curRank.icon+' '+curRank.title+'</span>'+
+    '<span style="font-family:var(--mono);font-size:12px;color:var(--acc)">'+totalCorrect+'/'+allQ+'정답</span></div>'+
+    '<div style="height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">'+
+    '<div style="height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),#f4c55f);width:'+
+    Math.min(100,Math.round(totalCorrect/allQ*100))+'%"></div></div>'+
+    (nextRank?'<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:6px">다음 목표 → '+nextRank.icon+' '+nextRank.title+'</div>':'<div style="font-size:11px;color:#f4c55f;margin-top:6px">🌟 최고 칭호 달성!</div>')+
+    '</div>'+
+
+    // 잘하는 부분
+    '<div class="ai-section strength">'+
+    '<div class="ai-section-header"><div class="ai-section-icon">💪</div>'+
+    '<div class="ai-section-title">'+escHtml(report.strength_title)+'</div></div>'+
+    '<div class="ai-section-body">'+escHtml(report.strength)+'</div>'+
+    (report.strength_tags&&report.strength_tags.length?
+      '<div style="margin-top:8px">'+report.strength_tags.map(function(t){return '<span class="ai-tag good">'+escHtml(t)+'</span>';}).join('')+'</div>':'')+'</div>'+
+
+    // 보완할 부분
+    '<div class="ai-section weakness">'+
+    '<div class="ai-section-header"><div class="ai-section-icon">📚</div>'+
+    '<div class="ai-section-title">'+escHtml(report.weakness_title)+'</div></div>'+
+    '<div class="ai-section-body">'+escHtml(report.weakness)+'</div>'+
+    (report.weakness_tags&&report.weakness_tags.length?
+      '<div style="margin-top:8px">'+report.weakness_tags.map(function(t){return '<span class="ai-tag bad">'+escHtml(t)+'</span>';}).join('')+'</div>':'')+'</div>'+
+
+    // 다음 목표 전략
+    '<div class="ai-section next">'+
+    '<div class="ai-section-header"><div class="ai-section-icon">🎯</div>'+
+    '<div class="ai-section-title">'+escHtml(report.next_title)+'</div></div>'+
+    '<div class="ai-section-body">'+escHtml(report.next)+'</div></div>'+
+
+    // 바나나 탐정 서명 + 새로고침
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">'+
+    '<div style="font-size:12px;color:rgba(255,255,255,.3);font-family:var(--mono)">🍌 바나나 탐정 분석</div>'+
+    '<button onclick="aiReportCache=null;generateAiReport()" style="padding:7px 14px;border:1px solid rgba(255,255,255,.15);border-radius:20px;background:transparent;color:rgba(255,255,255,.5);cursor:pointer;font-size:12px;font-family:var(--serif)">🔄 재분석</button></div>';
+
+  document.getElementById('aiReportContent').innerHTML=html;
+}
+
+function escHtml(str){
+  if(!str)return'';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showAiFab(){
+  var fab=document.getElementById('aiFab');if(fab)fab.style.display='flex';
+  var eb=document.getElementById('eraAiBtn');if(eb)eb.style.display='flex';
+  aiReportCache=null;
+}
+
+function _initListeners(){
+  var ni=document.getElementById('nameInput');
+  if(ni) ni.addEventListener('keydown',function(e){if(e.key==='Enter') startWithName();});
+  if(typeof updateRankBadge==='function') updateRankBadge(false);
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',_initListeners);
+} else { _initListeners(); }
+
+var playerName='', totalScore=0, totalCorrect=0;
+var eraState=ERAS.map(function(_,i){return {score:0,correct:0,done:false,relicEarned:false,threshold:RELIC_THRESHOLD[i]};});
+var qState={};
+var curEraId=0,curQIdx=0,curClue=0,curAnswered=false,curCorrect=false,bonusOpen=false;
+var pendingRelicShow=null; // relic to show after next click
+
+// ══════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════
+function $(id){return document.getElementById(id);}
+function showScreen(id){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');s.style.display='none';});var el=$(id);if(el){el.classList.add('active');el.style.display='flex';}}
+function setAcc(c){document.documentElement.style.setProperty('--acc',c);}
+function h2r(hex){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return(r)+","+(g)+","+(b);}
+function scoreInfo(ci){
+  if(ci===0)return{stars:'⭐⭐⭐',mult:3,pts:300};
+  if(ci===1)return{stars:'⭐⭐',mult:2,pts:200};
+  return{stars:'⭐',mult:1,pts:100};
+}
+
+// ══════════════════════════════════════════
+//  PARTICLES & CONFETTI
+// ══════════════════════════════════════════
+function spawnParticles(n,emojis){
+  if(n===undefined)n=12;
+  if(emojis===undefined)emojis=['⭐','✨','🌟','💫','🎊'];
+  for(var _i=0;_i<n;_i++){(function(_d){
+    setTimeout(function(){
+      var el=document.createElement('div');el.className='particle';
+      el.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+      el.style.left=(8+Math.random()*84)+'%';el.style.top=(25+Math.random()*35)+'%';
+      document.body.appendChild(el);
+      setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},1600);
+    },_d*65);
+  })(_i);}
+}
+function spawnConfetti(){
+  var colors=['#f4845f','#f4c55f','#7bd47a','#a8c8f4','#d4a8e8','#ff6b6b','#ffd93d'];
+  for(var i=0;i<60;i++){
+    setTimeout(function(){
+      var el=document.createElement('div');el.className='confetti';
+      el.style.left=Math.random()*100+'%';
+      el.style.top='-20px';
+      el.style.background=colors[Math.floor(Math.random()*colors.length)];
+      el.style.transform="rotate("+(Math.random()*360)+"deg)";
+      el.style.width=(8+Math.random()*8)+'px';
+      el.style.height=(8+Math.random()*8)+'px';
+      el.style.animationDuration=(1.5+Math.random())+'s';
+      el.style.animationDelay=(Math.random()*0.5)+'s';
+      document.body.appendChild(el);setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},3000);
+    },i*30);
+  }
+}
+
+// ══════════════════════════════════════════
+//  RELIC OVERLAY
+// ══════════════════════════════════════════
+function showRelicOverlay(era){
+  sfxRelic();
+  var overlay=$('relicOverlay');
+  $('ruIconBig').textContent=era.relic.icon;
+  $('ruGot').textContent='🎉 유물 획득!';
+  $('ruGot').style.color=era.accent;
+  $('ruNameBig').textContent=era.relic.name;
+  $('ruDescBig').textContent=era.relic.desc;
+
+  // spawn sparkles inside box
+  var sp=$('ruSparkles'); sp.innerHTML='';
+  var sparkEmojis=['✨','⭐','💫','🌟','🎊','💎','🏅'];
+  for(var i=0;i<12;i++){
+    var s=document.createElement('div');s.className='ru-sp';
+    var tx=(Math.random()-0.5)*160;
+    var ty=(Math.random()-0.5)*180;
+    s.style.setProperty('--tx',tx+'px');
+    s.style.setProperty('--ty',ty+'px');
+    s.style.setProperty('--tx2',(tx*2)+'px');
+    s.style.setProperty('--ty2',(ty*2-30)+'px');
+    s.style.left='50%'; s.style.top='50%';
+    s.style.animationDelay=(Math.random()*0.4)+'s';
+    s.textContent=sparkEmojis[Math.floor(Math.random()*sparkEmojis.length)];
+    sp.appendChild(s);
+  }
+
+  overlay.classList.add('show');
+  setTimeout(function(){ spawnConfetti(); spawnParticles(20,['🏺','✨','🎊','⭐','💎','👑']); },300);
+}
+function closeRelicOverlay(){
+  sfxClick();
+  $('relicOverlay').classList.remove('show');
+}
+
+// ══════════════════════════════════════════
+//  MODAL
+// ══════════════════════════════════════════
+function openGuide(){sfxClick();$('guideModal').classList.add('open');}
+function closeGuide(e){if(e.target===$('guideModal'))closeGuideBtn();}
+function closeGuideBtn(){sfxClick();$('guideModal').classList.remove('open');}
+
+// ══════════════════════════════════════════
+//  NAME
+// ══════════════════════════════════════════
+function startWithName(){
+  sfxClick();
+  var v=$('nameInput').value.trim();
+  playerName=v||'탐정';
+  showScreen('eraScreen');renderEraScreen();
+}
+// nameInput listener added in init()
+
+// ══════════════════════════════════════════
+//  ERA MAP
+// ══════════════════════════════════════════
+function renderEraScreen(){
+  setAcc('#f4845f');
+  document.body.style.background='linear-gradient(135deg,#100c08 0%,#0c0a06 100%)';
+  $('emWelcome').textContent="🕵️ "+(playerName)+" 탐정님, 어서오세요!";
+  $('emScore').textContent=totalScore;
+  $('emCorrect').textContent=totalCorrect;
+  $('emRelics').textContent=eraState.filter(function(e){return e.relicEarned;}).length;
+  $('emDone').textContent=eraState.filter(function(e){return e.done;}).length+'/'+ERAS.length;
+
+  var list=$('eraList');list.innerHTML='';
+  ERAS.forEach(function(era,i){
+    var st=eraState[i];
+    var locked=i>0&&!eraState[i-1].done;
+    var qTotal=era.questions.length;
+    var qDone=era.questions.filter(function(_,j){var _k=i+'_'+j;return qState[_k]&&qState[_k].answered;}).length;
+    var pct=qTotal>0?Math.round(qDone/qTotal*100):0;
+    var card=document.createElement('div');
+    card.className='era-card'+(locked?' era-locked':'');
+    card.style.borderColor=locked?'rgba(255,255,255,.07)':st.done?(era.accent)+"35":(era.accent)+"18";
+    card.innerHTML="\n      <style>.era-list .era-card:nth-child("+(i+1)+")::before{background:"+(locked?'transparent':era.accent)+";}</style>\n      <div class=\"era-icon\">"+(era.icon)+"</div>\n      <div class=\"era-info\">\n        <div class=\"era-name\" style=\"color:"+(locked?'rgba(255,255,255,.25)':'#fff')+"\">"+(era.name)+(locked?' 🔒':'')+"</div>\n        <div class=\"era-period\">"+(era.period)+"</div>\n        <div class=\"era-prog-txt\" style=\"color:"+(era.accent)+"88\">문제 "+(qDone)+"/"+(qTotal)+" 완료</div>\n        <div class=\"era-prog-bar\"><div class=\"era-prog-fill\" style=\"width:"+(pct)+"%;background:"+(era.accent)+"\"></div></div>\n      </div>\n      <div class=\"era-right\">\n        <div class=\"era-score-lbl\" style=\"color:"+(st.score>0?era.accent:'rgba(255,255,255,.28)')+"\">"+(st.score>0?st.score+'점':'—')+"</div>\n        <div class=\"era-relic-badge\" title=\""+(st.relicEarned?era.relic.name:'유물 미획득')+"\">"+(st.relicEarned?era.relic.icon:'⬜')+"</div>\n        "+(st.done?"<button class=\"era-retry-btn\" onclick=\"retryEra(event,"+(i)+")\">🔄 재도전</button>":'')+"\n      </div>";
+    if(!locked)card.addEventListener('click',function(e){if(!e.target.classList.contains('era-retry-btn')){sfxClick();startEra(i);}});
+    list.appendChild(card);
+  });
+
+  var row=$('relicsRow');row.innerHTML='';
+  ERAS.forEach(function(era,i){
+    var earned=eraState[i].relicEarned;
+    var slot=document.createElement('div');
+    slot.className='relic-slot'+(earned?' earned':'');
+    slot.innerHTML="<span"+(earned?'':' style="opacity:.18;filter:grayscale(1)"')+">"+(earned?era.relic.icon:'❓')+"</span>\n      <div class=\"relic-tip\">"+(earned?era.relic.name+' ('+era.name+')':(era.name)+" — 미획득")+"</div>";
+    row.appendChild(slot);
+  });
+}
+
+function retryEra(e,eraId){
+  e.stopPropagation(); sfxClick();
+  var st=eraState[eraId];
+  totalScore-=st.score; totalCorrect-=st.correct;
+  eraState[eraId]={score:0,correct:0,done:false,relicEarned:false,threshold:RELIC_THRESHOLD[eraId]};
+  ERAS[eraId].questions.forEach(function(_,j){delete qState[eraId+'_'+j];});
+  renderEraScreen();
+}
+
+// ══════════════════════════════════════════
+//  GAME
+// ══════════════════════════════════════════
+function startEra(eraId){
+  curEraId=eraId;
+  var era=ERAS[eraId];var q=0;
+  for(var i=0;i<era.questions.length;i++){
+    if(!(qState[eraId+'_'+i] && qState[eraId+'_'+i].answered)){q=i;break;}
+    if(i===era.questions.length-1)q=i;
+  }
+  curQIdx=q;showScreen('gameScreen');renderQ();
+}
+
+function renderQ(){
+  var era=ERAS[curEraId];var q=era.questions[curQIdx];
+  setAcc(era.accent); document.body.style.background=era.bg;
+  var totalQ=ERAS.reduce(function(s,e){return s+e.questions.length;},0);
+  var doneQ=Object.keys(qState).filter(function(k){return qState[k].answered;}).length;
+  $('gCaseLabel').textContent="CASE "+(doneQ+1)+" / "+(totalQ);$('gCaseLabel').style.color=era.accent;
+  $('gScore').textContent="🏆 "+(totalScore)+"점";$('gScore').style.color=era.accent;
+  $('gProgFill').style.width=(doneQ/totalQ*100)+"%";
+  $('gEraBadge').textContent='📅 '+era.name+' · '+era.period;
+  $('gEraBadge').style.color=era.accent;
+  $('gEraBadge').style.background="rgba("+(h2r(era.accent))+",.1)";
+  $('gEraBadge').style.border="1px solid rgba("+(h2r(era.accent))+",.28)";
+  $('gCardIcon').textContent=q.icon;
+  $('gCardFile').textContent="사건 파일 "+(curQIdx+1)+" / "+(era.questions.length);$('gCardFile').style.color=era.accent;
+  $('gCardTitle').textContent=q.title;$('gCardIntro').textContent=q.intro;
+  var dots=$('gDots');dots.innerHTML='';
+  era.questions.forEach(function(_,i){
+    var d=document.createElement('div');d.className='g-dot';
+    d.style.width=i===curQIdx?'20px':'6px';
+    d.style.background=i<curQIdx?era.accent:i===curQIdx?era.accent:'rgba(255,255,255,.16)';
+    dots.appendChild(d);
+  });
+  $('bubName1').style.color=era.accent;$('bubName2').style.color=era.accent;
+  $('bubName1').textContent=playerName+' 탐정님을 응원하는 시후';
+  $('bubName2').textContent='탐정 시후의 해설';
+  curClue=0;curAnswered=false;curCorrect=false;bonusOpen=false;
+  hideInlineQuestion();renderCluesPhase();showPhase('clues');
+}
+
+function renderCluesPhase(){
+  var era=ERAS[curEraId];var q=era.questions[curQIdx];
+  $('clueLbl').textContent='🔍 단서 수집';$('clueLbl').style.color=era.accent;
+  updateScoreHint();
+  var list=$('cluesList');list.innerHTML='';
+  q.clues.forEach(function(cl,i){
+    if(i===0){
+      var el=document.createElement('div');el.className='clue-item';el.id='clue_'+i;
+      el.innerHTML="<div class=\"clue-num\" style=\"color:"+(era.accent)+"\">●</div><div class=\"clue-body\">"+(cl)+"</div>";
+      list.appendChild(el);
+    } else {
+      var el=document.createElement('div');el.className='clue-locked-placeholder';el.id='clue_'+i;
+      el.innerHTML="<div class=\"clp-icon\">🔒</div><div class=\"clp-text\">단서 "+(i+1)+" — 잠겨 있음 (공개하면 배율 낮아짐)</div>";
+      list.appendChild(el);
+    }
+  });
+  renderClueBtns();
+  showInlineQuestion();
+}
+
+function updateScoreHint(){
+  var si=scoreInfo(curClue);
+  $('shStars').textContent=si.stars;
+  $('shText').innerHTML="<b style=\"color:#fff\">지금 맞추면 ×"+(si.mult)+"배 = "+(si.pts)+"점!</b><br><span style=\"font-size:11px;color:rgba(255,255,255,.42)\">단서를 적게 볼수록 더 높은 점수를 얻어요</span>";
+}
+
+function renderClueBtns(){
+  var era=ERAS[curEraId];var q=era.questions[curQIdx];
+  var btns=$('cluesBtns');btns.innerHTML='';
+  if(curClue<q.clues.length-1){
+    var nb=document.createElement('button');nb.className='btn-next-clue';nb.style.color=era.accent;
+    nb.innerHTML="<span>🔓 다음 단서 공개</span><span class=\"nxt-warn\">배율 낮아짐 (×"+(scoreInfo(curClue+1).mult)+"배)</span>";
+    nb.onclick=function(){sfxClue();revealNextClue();};btns.appendChild(nb);
+  }
+}
+
+function revealNextClue(){
+  curClue++;
+  var era=ERAS[curEraId];var q=era.questions[curQIdx];
+  var oldEl=document.getElementById('clue_'+curClue);
+  var newEl=document.createElement('div');newEl.className='clue-item';newEl.id='clue_'+curClue;
+  newEl.innerHTML="<div class=\"clue-num\" style=\"color:"+(era.accent)+"\">●</div><div class=\"clue-body\">"+(q.clues[curClue])+"</div>";
+  oldEl.replaceWith(newEl);updateScoreHint();renderClueBtns();
+  showInlineQuestion();
+}
+
+function goToQuestion(){
+  var era=ERAS[curEraId];var q=era.questions[curQIdx];var si=scoreInfo(curClue);
+  $('bubTxt1').textContent=(playerName)+" 탐정님! 단서 확인 완료! 이제 추리해볼 시간이에요. 신중하게 생각해보세요!";
+  $('qLbl').textContent='❓ 최종 질문';$('qLbl').style.color=era.accent;
+  $('qText').textContent=q.q;
+  $('qMult').innerHTML=(si.stars)+" 현재 배율: <b style=\"color:"+(era.accent)+"\">×"+(si.mult)+"배 = 최대 "+(si.pts)+"점</b>";
+  var grid=$('optsGrid');grid.innerHTML='';
+  q.opts.forEach(function(opt,i){
+    var btn=document.createElement('button');btn.className='opt-btn';btn.id='opt_'+i;
+    btn.innerHTML="<span class=\"opt-letter\" style=\"border-color:"+(era.accent)+";color:"+(era.accent)+"\">"+(String.fromCharCode(65+i))+"</span>"+(opt);
+    btn.onclick=function(){handleAnswer(i);};grid.appendChild(btn);
+  });
+  showPhase('question');
+}
+
+function handleAnswer(idx){
+  if(curAnswered)return;curAnswered=true;
+  var era=ERAS[curEraId];var q=era.questions[curQIdx];
+  curCorrect=(idx===q.ans); var correct=curCorrect;var si=scoreInfo(curClue);
+  var earned=correct?si.pts:0;var key=curEraId+'_'+curQIdx;
+  if(correct){totalScore+=earned;totalCorrect++;eraState[curEraId].score+=earned;eraState[curEraId].correct++;sfxCorrect();spawnParticles();updateRankBadge(true);}
+  else sfxWrong();
+  qState[key]={answered:true,clueUsed:curClue,correct:correct,earned:earned};
+  document.querySelectorAll('.opt-btn').forEach(function(b,i){
+    b.disabled=true;
+    if(i===q.ans)b.classList.add('correct');
+    else if(i===idx&&!correct)b.classList.add('wrong');
+  });
+  var allAnswered=era.questions.every(function(_,j){var _k=curEraId+'_'+j;return qState[_k]&&qState[_k].answered;});
+  if(allAnswered)eraState[curEraId].done=true;
+  var st=eraState[curEraId];
+  var newlyUnlocked=st.done&&!st.relicEarned&&st.score>=st.threshold;
+  if(newlyUnlocked)st.relicEarned=true;
+
+  $('fbBanner').className='fb-banner '+(correct?'ok':'bad');
+  $('fbEmoji').textContent=correct?'🎉':'😅';
+  $('fbTitle').textContent=correct?"정답! +"+(earned)+"점":'아쉬워요!';
+  $('fbTitle').className='fb-title '+(correct?'ok':'bad');
+  var praises=[(playerName)+" 탐정 대단해요!",'완벽한 추리예요!','역사 감각이 탁월해요!','훌륭해요!','예리한 눈이군요!','역사 박사 같아요!'];
+  $('fbSub').textContent=correct?praises[Math.floor(Math.random()*praises.length)]:"정답은 \""+(q.opts[q.ans])+"\"이에요";
+  $('sbStars').textContent=correct?si.stars:'❌';
+  $('sbMain').textContent=correct?"100점 × "+(si.mult)+"배 = "+(earned)+"점 획득!":'이번엔 아쉽지만 설명을 잘 읽어보세요!';
+  $('sbMain').style.color=correct?era.accent:'rgba(255,255,255,.6)';
+  $('sbDetail').textContent=correct?(si.mult===3?'첫 단서만 보고 맞췄어요! 최고 배율!':si.mult===2?'두 번째 단서까지 보고 맞췄어요!':'세 번째 단서까지 보고 맞췄어요.'):'다음 문제에서 더 잘할 수 있어요 💪';
+  $('expTxt').textContent=q.exp;
+  $('bonusToggle').textContent='💡 역사 꿀팁 더 보기 ▼';$('bonusToggle').style.color=era.accent;
+  $('bonusLbl').textContent='📚 추가 단서';$('bonusLbl').style.color=era.accent;
+  $('bonusTxt').textContent=q.bonus;
+  $('bonusBody').classList.remove('open');bonusOpen=false;
+  $('ansReview').innerHTML=q.opts.map(function(opt,i){
+    var isA=i===q.ans,isS=i===idx&&!correct;
+    return"<div class=\"rev-row\"><span style=\"font-size:14px\">"+(isA?'✅':isS?'❌':'⬜')+"</span><span style=\"font-size:13px;color:"+(isA?'#6dc86d':isS?'#e86d6d':'rgba(255,255,255,.36)')+";font-weight:"+(isA?700:400)+"\">"+(opt)+"</span></div>";
+  }).join('');
+
+  var esSummary=$('eraSummary');
+  if(allAnswered){
+    esSummary.style.display='block';esSummary.classList.add('anim-pop');
+    $('esSc').textContent=st.score+'점';$('esSc').style.color=era.accent;
+    var gotRelic=newlyUnlocked||st.relicEarned;
+    $('esRelic').textContent=st.relicEarned?(era.relic.icon)+" 유물 획득!":'유물 미획득 😢';
+    $('esRelic').style.color=st.relicEarned?era.accent:'rgba(255,255,255,.45)';
+    $('esInfo').innerHTML=st.relicEarned
+      ?"목표 점수("+(st.threshold)+"점) 달성! 유물을 획득했어요 🎉"
+      :"목표 점수: <b style=\"color:#fff\">"+(st.threshold)+"점</b> · 현재: <b style=\"color:"+(era.accent)+"\">"+(st.score)+"점</b><br>앞으로 <b style=\"color:#e86d6d\">"+(st.threshold-st.score)+"점</b> 더 필요해요. 재도전하세요!";
+    if(newlyUnlocked){
+      setTimeout(function(){showRelicOverlay(era);}, 800);
+    }
+  } else {
+    esSummary.style.display='none';
+  }
+
+  var nb=$('btnNext');
+  nb.style.background="linear-gradient(135deg,"+(era.accent)+","+(era.accent)+"aa)";
+  nb.style.color='#100c08';nb.style.boxShadow="0 0 18px "+(era.accent)+"38";
+  var nextIdx=findNextQ();
+  nb.textContent=nextIdx!==null?"다음 문제 → ("+(curQIdx+2)+"/"+(era.questions.length)+")":'← 시대 목록으로';
+  // 오답이고 단서가 더 있으면 → 자동 다음 단서 공개 후 재도전
+  if(!curCorrect){
+    var _q2=ERAS[curEraId].questions[curQIdx];
+    if(curClue < _q2.clues.length - 1){
+      autoRevealNextClueAndBlink();
+      return; // 피드백 화면 안 보여줌
+    }
+  }
+  hideInlineQuestion();
+  showPhase('feedback');
+}
+
+function findNextQ(){
+  var era=ERAS[curEraId];
+  for(var i=curQIdx+1;i<era.questions.length;i++)if(!(qState[curEraId+'_'+i] && qState[curEraId+'_'+i].answered))return i;
+  return null;
+}
+function nextQ(){sfxNextQ();var nxt=findNextQ();if(nxt!==null){curQIdx=nxt;renderQ();}else backToMap();}
+function backToMap(){sfxClick();showScreen('eraScreen');renderEraScreen();
+  if(totalCorrect>0) showAiFab();
+}
+function showPhase(p){
+  $('phClues').style.display='none';$('phQuestion').style.display='none';$('phFeedback').style.display='none';
+  if(p==='clues')$('phClues').style.display='block';
+  if(p==='question')$('phQuestion').style.display='flex';
+  if(p==='feedback')$('phFeedback').style.display='flex';
+}
+function toggleBonus(){
+  sfxClick();bonusOpen=!bonusOpen;
+  $('bonusBody').classList.toggle('open',bonusOpen);
+  $('bonusToggle').textContent=bonusOpen?'💡 역사 꿀팁 닫기 ▲':'💡 역사 꿀팁 더 보기 ▼';
+}
+
+// ══════════════════════════════════════════
+//  RESULT
+// ══════════════════════════════════════════
+function showResult(){
+  showScreen('resultScreen');
+  document.body.style.background='linear-gradient(135deg,#1a0e06 0%,#100c08 100%)';
+  var allQ=ERAS.reduce(function(s,e){return s+e.questions.length;},0);
+  var pct=allQ>0?Math.round(totalCorrect/allQ*100):0;
+  var relics=eraState.filter(function(e){return e.relicEarned;}).length;
+  var ranks=[
+    {min:33,title:'전설의 역사 탐정 마스터 🏆',msg:"완벽해요, "+(playerName)+" 탐정님! 한국 고대사의 모든 비밀을 밝혀냈어요!"},
+    {min:27,title:'베테랑 탐정 🥇',msg:"훌륭해요! 거의 모든 사건을 해결한 "+(playerName)+" 탐정님!"},
+    {min:20,title:'실력파 탐정 🥈',msg:"잘했어요! 조금만 더 공부하면 마스터가 될 수 있어요!"},
+    {min:13,title:'신입 탐정 🥉',msg:"좋은 시작이에요! 재도전해서 더 높은 점수를 노려봐요!"},
+    {min:0, title:'견습 탐정 🔍',msg:"괜찮아요! 역사 공부를 더 하고 다시 도전해봐요!"}
+  ];
+  var rank=ranks.find(function(r){return totalCorrect>=r.min;})||ranks[ranks.length-1];
+  $('resRank').textContent=rank.title;$('resMsg').textContent=rank.msg;
+  $('ringVal').textContent=totalScore;$('rsCnt').textContent=totalCorrect+'/'+allQ;
+  $('rsPct').textContent=pct+'%';$('rsRel').textContent=relics+'/'+ERAS.length;
+  var circ=2*Math.PI*60;
+  setTimeout(function(){$('ringArc').style.strokeDashoffset=circ*(1-pct/100);},300);
+  var grid=$('rrGrid');grid.innerHTML='';
+  ERAS.forEach(function(era,i){
+    var earned=eraState[i].relicEarned;
+    var item=document.createElement('div');item.className='rr-item'+(earned?'':' locked');
+    item.innerHTML="<div class=\"rr-icon\">"+(earned?era.relic.icon:'❓')+"</div><div class=\"rr-name\">"+(earned?era.relic.name:'???')+"</div>";
+    grid.appendChild(item);
+  });
+  var rows=$('retRows');rows.innerHTML='';
+  ERAS.forEach(function(era,i){
+    var st=eraState[i];var row=document.createElement('div');row.className='ret-row';
+    row.innerHTML="<span class=\"ret-icon\">"+(era.icon)+"</span><span class=\"ret-name\">"+(era.name)+"</span><span class=\"ret-relic\">"+(st.relicEarned?era.relic.icon:'⬜')+"</span><span class=\"ret-pts\" style=\"color:"+(era.accent)+"\">"+(st.done?st.score+'점':'미완료')+"</span>";
+    rows.appendChild(row);
+  });
+  if(relics>=3)setTimeout(function(){spawnConfetti();spawnParticles(16,['🏺','👑','🔔','🏹','🐻','🌸']);},500);
+}
+function retryAll(){
+  sfxClick();totalScore=0;totalCorrect=0;
+  eraState=ERAS.map(function(_,i){return {score:0,correct:0,done:false,relicEarned:false,threshold:RELIC_THRESHOLD[i]};});
+  qState={};playerName='';setAcc('#f4845f');document.body.style.background='';
+  $('nameInput').value='';showScreen('nameScreen');
+}
+function _init(){
+  var ni=document.getElementById('nameInput');
+  if(ni) ni.addEventListener('keydown',function(e){if(e.key==='Enter')startWithName();});
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',_init);
+} else {
+  _init();
+}
+</script>
+<div id="rankTableOverlay" class="rank-table-overlay" style="display:none" onclick="if(event.target===this)closeRankTable()">
+  <div class="rank-table-popup">
+    <div class="rt-title">🎖️ 칭호 달성 기준</div>
+    <div id="rankTableRows"></div>
+    <button class="rt-close-btn" onclick="closeRankTable()">닫기</button>
+  </div>
+</div>
+
+<!-- AI 리포트 패널 -->
+<div id="aiOverlay" class="ai-overlay" style="display:none" onclick="if(event.target===this)closeAiReport()">
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-panel-handle"></div>
+    <div class="ai-panel-header">
+      <div class="ai-panel-icon">🤖</div>
+      <div>
+        <div class="ai-panel-title">AI 학습 리포트</div>
+        <div class="ai-panel-sub">CLAUDE · 개인 맞춤 분석</div>
+      </div>
+      <button onclick="closeAiReport()" style="margin-left:auto;background:rgba(255,255,255,.08);border:none;border-radius:50%;width:32px;height:32px;color:rgba(255,255,255,.6);cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <div id="aiReportContent">
+      <div class="ai-loading">
+        <div class="ai-loading-dots"><span></span><span></span><span></span></div>
+        <div class="ai-loading-text">AI가 학습 데이터를 분석 중이에요...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 수시확인 플로팅 버튼 -->
+<button class="ai-fab" id="aiFab" onclick="openAiReport()" title="AI 리포트 확인">
+  🤖
+  <div class="ai-fab-badge"></div>
+</button>
+
+</body>
+</html>

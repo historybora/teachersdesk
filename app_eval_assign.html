@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>스마트 감독교사 배정 시스템</title>
+
+    <!-- Tailwind CSS -->
+    <script>
+        // Tailwind CDN production 경고 완전 차단
+        (function(){
+            var _warn=console.warn;
+            var _error=console.error;
+            var block=function(args){
+                var s=Array.prototype.join.call(args,' ');
+                return s.indexOf('tailwindcss')>=0||s.indexOf('cdn.tailwind')>=0||s.indexOf('PostCSS')>=0||s.indexOf('Tailwind CLI')>=0;
+            };
+            console.warn=function(){if(block(arguments))return;_warn.apply(console,arguments);};
+            console.error=function(){if(block(arguments))return;_error.apply(console,arguments);};
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { sage: { 50:'#f2f8f5',100:'#e0f0e8',200:'#c1e1d3',300:'#95cbb7',400:'#64af96',500:'#429379',600:'#307661',700:'#285f50',800:'#234e42',900:'#1d4137' } } } }
+        };
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body { font-family:'Pretendard',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; background-color:#f4f7f6; word-break:keep-all; }
+
+        .draggable-cell { cursor:grab; transition:background-color 0.2s; position:relative; }
+        .draggable-cell:active { cursor:grabbing; transform:scale(0.98); z-index:10; }
+
+        .editable-name { min-height:1.5rem; width:100%; outline:none; cursor:text; display:inline-block; vertical-align:middle; }
+        .editable-name:focus { border-bottom:2px solid #3b82f6; background-color:#fffbeb; }
+        .editable-time:focus { outline:none; background-color:#fffbeb; }
+
+        input[type="time"],input[type="date"] { cursor:pointer; }
+
+        .autocomplete-dropdown {
+            position:fixed; z-index:99999; width:200px; max-height:220px; overflow-y:auto;
+            background:white; border:2px solid #307661; border-radius:10px;
+            box-shadow:0 8px 24px -4px rgba(0,0,0,.22); display:none; text-align:left;
+        }
+        .autocomplete-item { padding:8px 12px; cursor:pointer; border-bottom:1px solid #f3f4f6; display:flex; justify-content:space-between; align-items:center; font-size:14px; font-weight:700; color:#111827; }
+        .autocomplete-item:hover { background-color:#e0f0e8; }
+
+        /* 헤더/셀 배경색 */
+        .header-grade-0 { background-color:#dbeafe; }
+        .header-grade-1 { background-color:#dcfce7; }
+        .header-grade-2 { background-color:#f3e8ff; }
+        .col-time        { background-color:#fef3c7; }
+        .col-time-cell   { background-color:#fffbeb; }
+        .row-lunch       { background-color:#d1fae5; color:#064e3b; }
+        .col-hallway-header { background-color:#ffe4e6; }
+        .col-hallway-cell   { background-color:#fff1f2; }
+        .col-sub-header     { background-color:#d4edda; }
+        .col-sub-cell       { background-color:#f0faf4; }
+
+        /* ── 표 선: collapse + 4면 모두 명시 (화면·PDF 동일) ── */
+        table#assignment-table {
+            border-collapse: collapse !important;
+            border-spacing: 0 !important;
+            width: 100%;
+            box-sizing: border-box;
+            border: 2px solid #000 !important;
+        }
+        table#assignment-table th,
+        table#assignment-table td {
+            border: 1px solid #000 !important;
+            box-sizing: border-box !important;
+        }
+        /* 드래그 오버 시 outline 사용 (border 변경하면 레이아웃 튐 방지) */
+        .drag-over {
+            outline: 3px dashed #3b82f6 !important;
+            outline-offset: -3px !important;
+            background-color: #bfdbfe !important;
+        }
+
+        @media print {
+            @page { size:landscape; margin:8mm; }
+            body { background:white !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; padding:0 !important; margin:0 !important; }
+            .no-print { display:none !important; }
+            .shadow-sm,.shadow-md,.shadow-lg,.shadow-xl { box-shadow:none !important; }
+            #print-area { display:block !important; width:100% !important; }
+            .overflow-x-auto { overflow:visible !important; }
+            #print-title { font-size:15pt !important; margin-bottom:8px !important; }
+            table#assignment-table { border-collapse:collapse !important; border:2px solid #000 !important; width:100% !important; }
+            table#assignment-table th, table#assignment-table td { border:1px solid #000 !important; padding:3px 2px !important; color:#000 !important; font-size:9.5pt !important; line-height:1.1 !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+            .header-grade-0{background-color:#dbeafe !important;} .header-grade-1{background-color:#dcfce7 !important;} .header-grade-2{background-color:#f3e8ff !important;}
+            .col-time{background-color:#fef3c7 !important;} .col-time-cell{background-color:#fffbeb !important;}
+            .row-lunch{background-color:#d1fae5 !important;color:#064e3b !important;}
+            .col-hallway-header{background-color:#ffe4e6 !important;} .col-hallway-cell{background-color:#fff1f2 !important;} .col-sub-header{background-color:#ede9fe !important;} .col-sub-cell{background-color:#f5f3ff !important;}
+            .criteria-container { display:block !important; margin-top:8px !important; padding:6px !important; border:1.5px solid #000 !important; background:#fff !important; }
+            textarea.criteria-text { font-size:9.5pt !important; border:none !important; padding:0 !important; color:#000 !important; resize:none; overflow:hidden; height:50px !important; }
+        }
+
+        .hide-scrollbar::-webkit-scrollbar{display:none;} .hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}
+        .hidden-step { display:none !important; }
+    </style>
+</head>
+<body>
+<div class="min-h-screen pb-20">
+
+    <header class="bg-sage-700 text-white px-4 py-3 shadow-md no-print sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+            <h1 class="text-xl md:text-2xl font-black flex items-center gap-2 tracking-tight">
+                <i class="fa-solid fa-school text-yellow-300"></i> 스마트 감독교사 배정
+            </h1>
+            <div class="flex gap-2 text-sm md:text-base font-bold overflow-x-auto hide-scrollbar w-full md:w-auto pb-1 md:pb-0">
+                <button id="btn-step1" onclick="goToStep(1)" class="step-btn flex-1 md:flex-none px-3 md:px-4 py-2 rounded-lg transition-colors whitespace-nowrap bg-white text-sage-700 shadow">1. 기본설정</button>
+                <button id="btn-step2" onclick="goToStep(2)" class="step-btn flex-1 md:flex-none px-3 md:px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-sage-100 hover:bg-sage-600">2. 교사명단</button>
+                <button id="btn-step3" onclick="goToStep(3)" class="step-btn flex-1 md:flex-none px-3 md:px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-sage-100 hover:bg-sage-600">3. 최종 배정표</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+
+        <!-- STEP 1 -->
+        <div id="step1-container" class="bg-white rounded-2xl shadow-lg p-5 md:p-8 border border-gray-200">
+            <h2 class="text-xl md:text-2xl font-black mb-6 text-gray-900 border-b-2 border-sage-500 pb-3 flex items-center">
+                <i class="fa-solid fa-gear text-sage-500 mr-2"></i>1단계: 평가 기본 정보 설정
+            </h2>
+
+            <!-- 이전 배정표 불러오기 -->
+            <div class="mb-8 bg-amber-50 p-5 rounded-xl border-2 border-amber-300">
+                <h3 class="text-base md:text-lg font-black text-amber-900 mb-1 flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-left text-amber-600"></i>이전에 저장한 배정표 이어서 작업하기
+                </h3>
+                <p class="text-sm font-bold text-amber-700 mb-3">
+                    이 프로그램에서 <b>엑셀 저장</b>한 파일을 올리면 고사명·날짜·학년구조·과목·시간·교사명단·감독 배치가 모두 자동으로 복원되며 <b>배정 오류 점검도 바로 사용</b>할 수 있습니다.
+                </p>
+                <div class="relative border-2 border-dashed border-amber-400 rounded-lg bg-white hover:bg-amber-50 transition-colors cursor-pointer text-center py-6">
+                    <input type="file" id="restoreFile" accept=".xlsx,.xls" onchange="restoreFromExcel(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
+                    <i class="fa-solid fa-file-arrow-up text-3xl text-amber-400 mb-2"></i>
+                    <p class="font-black text-amber-800 text-base mt-2">클릭하여 이전 저장 엑셀 파일 선택</p>
+                    <p class="text-xs text-amber-600 mt-1 font-bold">※ 이 프로그램의 엑셀 저장 버튼으로 저장한 파일만 복원됩니다</p>
+                </div>
+                <div id="restore-msg" class="hidden mt-3 text-sm font-black text-green-700 bg-green-50 border border-green-300 rounded-lg p-3">
+                    <i class="fa-solid fa-circle-check mr-1"></i><span id="restore-msg-text"></span>
+                </div>
+            </div>
+
+            <!-- 구분선 -->
+            <div class="flex items-center gap-3 mb-8">
+                <div class="flex-1 h-px bg-gray-200"></div>
+                <span class="text-sm font-black text-gray-400">또는 새로 작성</span>
+                <div class="flex-1 h-px bg-gray-200"></div>
+            </div>
+
+            <!-- 평가명 -->
+            <div class="mb-8">
+                <label class="block text-base md:text-lg font-bold text-gray-800 mb-2">평가명 (출력용 제목)</label>
+                <input type="text" id="examName" class="w-full md:w-1/2 p-3 border-2 border-gray-300 rounded-lg focus:border-sage-500 outline-none text-base md:text-lg font-bold text-gray-900"/>
+            </div>
+
+            <!-- 날짜 -->
+            <div class="mb-8 bg-blue-50 p-5 md:p-6 rounded-xl border-2 border-blue-200 shadow-sm">
+                <h3 class="text-lg md:text-xl font-bold text-blue-900 mb-4 flex items-center"><i class="fa-regular fa-calendar-check mr-2 text-blue-600"></i>시험 일자 지정</h3>
+                <div class="flex flex-col md:flex-row gap-6 mb-4 items-start md:items-center">
+                    <div class="w-full md:w-1/3">
+                        <label class="block text-sm md:text-base font-bold text-gray-700 mb-2">총 시험 일수</label>
+                        <div class="flex items-center border-2 border-blue-300 rounded-lg overflow-hidden h-11 md:h-12 w-full bg-white">
+                            <button onclick="changeExamDays(-1)" class="w-10 md:w-12 h-full bg-blue-50 hover:bg-blue-100 text-blue-600 font-black border-r border-blue-200 text-xl">-</button>
+                            <div id="examDaysDisplay" class="flex-1 text-center font-bold text-lg text-gray-800">3</div>
+                            <button onclick="changeExamDays(1)" class="w-10 md:w-12 h-full bg-blue-50 hover:bg-blue-100 text-blue-600 font-black border-l border-blue-200 text-xl">+</button>
+                        </div>
+                    </div>
+                    <div class="w-full flex-1"><div id="date-inputs" class="flex flex-wrap gap-3"></div></div>
+                </div>
+            </div>
+
+            <!-- 학년 -->
+            <div class="mb-8 bg-sage-50 p-5 md:p-6 rounded-xl border-2 border-sage-200">
+                <h3 class="text-lg md:text-xl font-bold text-sage-900 mb-5 flex items-center"><i class="fa-solid fa-users-rectangle mr-2 text-sage-600"></i>학년별 학급 및 복도감독 인원</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6" id="grades-container"></div>
+                <div class="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 space-y-1">
+                    <div class="font-black text-amber-800">💡 0으로 설정하면 되는 경우</div>
+                    <div>• 특정 학년 시험이 없으면 해당 학년 <b>학급 수를 0</b>으로 설정 → 배정표에서 제외됩니다</div>
+                    <div>• 복도감독이 필요 없으면 <b>복도감독을 0</b>으로, 부감독이 없으면 <b>부감독을 0</b>으로 설정하면 됩니다</div>
+                </div>
+            </div>
+
+            <!-- 시정표 -->
+            <div class="mb-8">
+                <h3 class="text-lg md:text-xl font-bold text-gray-900 mb-4"><i class="fa-regular fa-clock mr-2 text-sage-600"></i>하루 시정표 세팅</h3>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-5 bg-gray-50 p-5 md:p-6 rounded-xl border-2 border-gray-200">
+                    <div class="col-span-2 md:col-span-1"><label class="block text-sm font-bold text-gray-600 mb-2">하루 교시 수</label><div class="flex items-center border-2 border-gray-300 rounded-lg overflow-hidden h-11 md:h-12 bg-white"><button onclick="changeTimeSet('periods',-1)" class="w-10 h-full bg-gray-100 text-gray-700 font-bold border-r border-gray-300">-</button><div id="set-periods" class="flex-1 text-center font-bold text-gray-800">5</div><button onclick="changeTimeSet('periods',1)" class="w-10 h-full bg-gray-100 text-gray-700 font-bold border-l border-gray-300">+</button></div></div>
+                    <div class="col-span-2 md:col-span-1"><label class="block text-sm font-bold text-gray-600 mb-2">1교시 시작시간</label><input type="time" id="set-startTime" value="08:30" class="w-full h-11 md:h-12 p-2 border-2 border-gray-300 rounded-lg outline-none font-bold text-center bg-white text-gray-800"/></div>
+                    <div><label class="block text-xs md:text-sm font-bold text-gray-600 mb-2">시험(분)</label><div class="flex items-center border-2 border-gray-300 rounded-lg overflow-hidden h-11 md:h-12 bg-white"><button onclick="changeTimeSet('duration',-5)" class="w-8 h-full bg-gray-100 text-gray-700 font-bold border-r border-gray-300">-</button><div id="set-duration" class="flex-1 text-center font-bold text-gray-800">45</div><button onclick="changeTimeSet('duration',5)" class="w-8 h-full bg-gray-100 text-gray-700 font-bold border-l border-gray-300">+</button></div></div>
+                    <div><label class="block text-xs md:text-sm font-bold text-gray-600 mb-2">쉬는시간(분)</label><div class="flex items-center border-2 border-gray-300 rounded-lg overflow-hidden h-11 md:h-12 bg-white"><button onclick="changeTimeSet('breakTime',-5)" class="w-8 h-full bg-gray-100 text-gray-700 font-bold border-r border-gray-300">-</button><div id="set-breakTime" class="flex-1 text-center font-bold text-gray-800">15</div><button onclick="changeTimeSet('breakTime',5)" class="w-8 h-full bg-gray-100 text-gray-700 font-bold border-l border-gray-300">+</button></div></div>
+                    <div class="col-span-2 md:col-span-1"><label class="block text-xs md:text-sm font-bold text-sage-700 mb-2">예령시간(분)</label><div class="flex items-center border-2 border-sage-300 rounded-lg overflow-hidden h-11 md:h-12 bg-white"><button onclick="changeTimeSet('prepTime',-1)" class="w-10 h-full bg-sage-50 text-sage-700 font-bold border-r border-sage-300">-</button><div id="set-prepTime" class="flex-1 text-center font-bold text-sage-800">5</div><button onclick="changeTimeSet('prepTime',1)" class="w-10 h-full bg-sage-50 text-sage-700 font-bold border-l border-sage-300">+</button></div></div>
+                    <div class="col-span-2 md:col-span-5 border-t-2 border-gray-200 mt-2 pt-5">
+                        <label class="flex items-center text-base md:text-lg font-black text-gray-800 mb-4 cursor-pointer w-fit p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <input type="checkbox" id="set-hasLunch" onchange="toggleLunch()" checked class="mr-3 w-6 h-6 md:w-5 md:h-5 accent-sage-600"/>점심시간 포함 여부
+                        </label>
+                        <div id="lunch-settings" class="flex flex-col md:flex-row gap-4 md:gap-6 p-5 bg-white rounded-xl border-2 border-sage-200 shadow-sm">
+                            <div class="flex-1"><label class="block text-sm font-bold text-gray-600 mb-2">몇 교시 후에 점심인가요?</label>
+                                <select id="set-lunchAfter" class="w-full p-3 border-2 border-gray-300 rounded-lg font-bold text-gray-800 bg-white">
+                                    <option value="2">2교시 후</option><option value="3">3교시 후</option><option value="4" selected>4교시 후</option><option value="5">5교시 후</option>
+                                </select></div>
+                            <div class="flex-1"><label class="block text-sm font-bold text-gray-600 mb-2">점심시간(분)</label>
+                                <select id="set-lunchDuration" class="w-full p-3 border-2 border-gray-300 rounded-lg font-bold text-gray-800 bg-white">
+                                    <option value="30">30분</option><option value="40">40분</option><option value="45">45분</option><option value="50" selected>50분</option><option value="60">60분</option><option value="70">70분</option>
+                                </select></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 교시별 과목 및 감독 설정 -->
+            <div class="mb-6" id="slot-options-section">
+                <h3 class="text-lg md:text-xl font-bold text-gray-900 mb-2"><i class="fa-solid fa-table-list mr-2 text-sage-600"></i>교시별 과목 및 감독 설정</h3>
+                <p class="text-sm font-bold text-gray-500 mb-3">과목을 미리 입력해야 본인 과목 감독 배정을 피할 수 있습니다. 부감독·복도감독이 없는 교시는 체크를 해제하세요.</p>
+                <div id="slot-options-container" class="overflow-x-auto"></div>
+            </div>
+
+            <button onclick="goToStep(2)" class="w-full bg-sage-600 hover:bg-sage-700 text-white text-lg md:text-xl font-black py-4 px-6 rounded-xl shadow-lg transition-transform hover:scale-[1.01]">설정 완료 및 다음 단계로 이동 <i class="fa-solid fa-arrow-right ml-2"></i></button>
+        </div>
+
+        <!-- STEP 2 -->
+        <div id="step2-container" class="bg-white rounded-2xl shadow-lg p-5 md:p-8 border border-gray-200 hidden-step">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b-2 border-sage-500 pb-3 gap-4">
+                <h2 class="text-xl md:text-2xl font-black text-gray-900"><i class="fa-solid fa-users text-sage-500 mr-2"></i>2단계: 교사 명단 업로드</h2>
+                <button onclick="downloadExcelTemplate()" class="w-full md:w-auto bg-green-100 hover:bg-green-200 text-green-800 py-3 md:py-2.5 px-4 rounded-lg border-2 border-green-300 font-bold flex items-center justify-center transition-colors shadow-sm">
+                    <i class="fa-solid fa-download mr-2 text-green-600"></i>엑셀 기본양식 다운로드
+                </button>
+            </div>
+
+            <!-- 엑셀 컬럼 안내 -->
+            <div class="mb-5 bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-sm font-bold text-blue-900 space-y-3">
+                <div class="font-black text-base text-blue-900 flex items-center gap-2"><i class="fa-solid fa-table-list text-blue-500"></i>엑셀 컬럼 작성 안내</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div class="bg-white rounded-lg p-3 border border-blue-100 space-y-1">
+                        <div class="text-blue-700">📌 <span class="text-gray-800">이름</span> — 교사 이름</div>
+                        <div class="text-blue-700">📌 <span class="text-gray-800">과목</span> — 담당 과목</div>
+                        <div class="text-blue-700">📌 <span class="text-gray-800">담당학급</span> — 담임반 (<span class="text-rose-600">예: 1-2</span>) 없으면 빈칸</div>
+                        <div class="text-blue-700">📌 <span class="text-gray-800">수업시수</span> — 주당 시수 (많을수록 감독 많이 배정)</div>
+                        <div class="text-blue-700">📌 <span class="text-gray-800">누적횟수</span> — 이전 학기까지 감독 횟수</div>
+                        <div class="text-indigo-700">📌 <span class="text-gray-800">배정역할</span> — <span class="font-mono bg-indigo-50 px-1 rounded">정감독만</span> / <span class="font-mono bg-indigo-50 px-1 rounded">부감독만</span> / <span class="font-mono bg-indigo-50 px-1 rounded">복도만</span> / 빈칸=모두 가능</div>
+                        <div class="text-indigo-700">📌 <span class="text-gray-800">수업참여횟수</span> — 시험기간 중 다른 학년 수업 들어간 횟수<br><span class="text-xs text-gray-500 ml-4">→ 감독 횟수로 간주해 배정 비율에 자동 반영</span></div>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-3 border border-amber-200 space-y-2">
+                        <div class="font-black text-amber-800">⚠️ 배정불가 컬럼 작성법</div>
+                        <div class="text-gray-700 space-y-1 text-xs leading-relaxed">
+                            <div>• <span class="bg-amber-100 px-1 rounded font-mono">화</span> → 화요일 <b>전체</b> 배정불가</div>
+                            <div>• <span class="bg-amber-100 px-1 rounded font-mono">수1,수2</span> → 수요일 1교시·2교시만 배정불가</div>
+                            <div>• <span class="bg-amber-100 px-1 rounded font-mono">화,수1,수2</span> → 화요일 전체 + 수요일 1·2교시 배정불가</div>
+                            <div>• <span class="bg-amber-100 px-1 rounded font-mono">1교시</span> → 요일 상관없이 매주 1교시 배정불가</div>
+                            <div class="text-amber-700 font-black pt-1">쉼표로 여러 조건 나열, 교시는 숫자만도 가능</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-sage-50 border border-sage-200 rounded-lg p-3 text-xs text-sage-900 space-y-1">
+                    <div class="font-black text-sage-800">💡 수업시수·누적횟수 안내</div>
+                    <div>• 수업시수·누적횟수를 <b>0으로 입력</b>하면 모든 교사가 <b>동등하게 균등 배정</b>됩니다</div>
+                    <div>• 시수가 높을수록 감독 배정 횟수가 비례하여 많아집니다</div>
+                </div>
+            </div>
+            <div class="border-4 border-dashed border-gray-300 p-8 md:p-10 text-center rounded-xl bg-gray-50 mb-6 hover:bg-gray-100 hover:border-sage-400 transition-colors cursor-pointer relative">
+                <input type="file" id="excelUpload" accept=".xlsx,.xls" onchange="handleExcelUpload(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"/>
+                <i class="fa-solid fa-file-excel text-5xl md:text-6xl text-green-600 mb-4"></i>
+                <p class="text-lg md:text-xl font-black text-gray-800">여기를 클릭하여 작성된 교사 명단 엑셀을 업로드하세요</p>
+                <p class="text-sm font-bold text-gray-500 mt-2">💡 <b>배정불가상세</b> 컬럼으로 특정 요일의 특정 교시만 제외 가능<br>예: <code>수 1,2</code> → 수요일 1·2교시 불가 / <code>수 1,2 / 화 3</code> → 수요일 1·2교시 + 화요일 3교시 불가</p>
+            </div>
+            <div id="upload-success" class="hidden mt-6 bg-green-50 p-5 md:p-6 rounded-xl border-2 border-green-300 shadow-sm">
+                <p id="teacher-count" class="text-green-800 text-base md:text-lg font-black mb-4 flex items-center"></p>
+                <button onclick="executeAutoAssignment()" class="w-full bg-sage-700 hover:bg-sage-800 text-white text-xl md:text-2xl font-black py-4 md:py-5 px-6 rounded-xl shadow-xl flex items-center justify-center transition-transform hover:scale-[1.02]">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-3 text-yellow-400 text-2xl md:text-3xl"></i>배정표 자동 생성하기
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div id="step3-container" class="space-y-6 hidden-step">
+            <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 md:p-5 flex items-start gap-3 md:gap-4 text-blue-900 no-print shadow-sm">
+                <i class="fa-solid fa-lightbulb text-2xl md:text-3xl text-yellow-500 mt-1"></i>
+                <div class="w-full">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-black text-lg md:text-xl text-blue-900">편집 가이드</h3>
+                        <button onclick="runInspection()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-black text-sm shadow animate-pulse">
+                            <i class="fa-solid fa-magnifying-glass-chart mr-1"></i>배정 오류 점검
+                        </button>
+                    </div>
+                    <ul class="list-disc list-inside text-sm md:text-base font-bold space-y-1.5 text-blue-800">
+                        <li><span class="text-rose-600 border-b-2 border-rose-300 pb-0.5">배정 수정:</span> 이름 칸을 <b>클릭하여 직접 수정</b>하거나 <b>드래그 앤 드롭</b>으로 위치 변경</li>
+                        <li><span class="text-amber-600 border-b-2 border-amber-300 pb-0.5">시간·과목 수정:</span> 해당 칸을 <b>직접 클릭</b>하여 수정</li>
+                        <li><span class="text-indigo-600 border-b-2 border-indigo-300 pb-0.5">스마트 추천:</span> 빈칸 클릭 시 배정 횟수 적은 교사 자동 추천</li>
+                        <li><span class="text-green-700 border-b-2 border-green-300 pb-0.5">저장 팁:</span> 작업 후 반드시 <b>엑셀 저장</b>해두면 다음에 1단계에서 그대로 복원 가능</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl p-4 md:p-8 border border-gray-300 print-border relative">
+                <datalist id="subject-list">
+                    <option value="자습"></option><option value="국어"></option><option value="영어"></option>
+                    <option value="수학"></option><option value="과학"></option><option value="사회"></option>
+                    <option value="역사"></option><option value="도덕"></option><option value="기술·가정"></option>
+                    <option value="정보"></option><option value="음악"></option><option value="미술"></option>
+                    <option value="체육"></option><option value="한문"></option><option value="진로"></option>
+                </datalist>
+                <div id="print-area">
+                    <div id="print-title" class="text-center text-2xl md:text-3xl font-black mb-6 border-b-4 border-black pb-3 tracking-wide text-black mt-2"></div>
+                    <div id="table-container" style="width:100%;overflow-x:auto;padding-bottom:2px;padding-right:2px;"></div>
+                    <div class="criteria-container mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        <textarea id="criteria-text" class="w-full h-24 text-sm md:text-base font-bold text-gray-800 bg-transparent outline-none border-none resize-none criteria-text" placeholder="편성 기준 입력">※ 편성 기준
+1. 교사별 주당 수업 시수 및 이전 감독 누적 횟수 비례 배정
+2. 동일 교사 연속 시간 감독 최대한 지양
+3. 담임 교사 및 평가 담당자 배정 제외</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 저장 버튼 -->
+            <div class="no-print" style="display:flex;flex-direction:row;justify-content:center;gap:16px;margin-top:32px;padding:0 16px;flex-wrap:wrap;">
+                <button onclick="printInNewWindow()" style="flex:1;min-width:160px;max-width:360px;background:#307661;color:#fff;border:1px solid #234e42;padding:18px 24px;border-radius:16px;font-size:18px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                    <i class="fa-solid fa-print" style="font-size:22px;margin-right:12px;"></i>인쇄 / PDF 저장
+                </button>
+                <button onclick="exportToExcel()" style="flex:1;min-width:160px;max-width:360px;background:#16a34a;color:#fff;border:1px solid #14532d;padding:18px 24px;border-radius:16px;font-size:18px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                    <i class="fa-solid fa-file-excel" style="font-size:22px;margin-right:12px;"></i>엑셀 저장 (복원용)
+                </button>
+            </div>
+
+            <!-- 오류 점검 모달 -->
+            <div id="validation-modal" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4 no-print">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative">
+                    <button onclick="closeValidationModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl"><i class="fa-solid fa-xmark"></i></button>
+                    <h2 class="text-2xl font-black mb-3 flex items-center text-gray-900 border-b pb-2">
+                        <i class="fa-solid fa-clipboard-check text-blue-600 mr-2"></i>배정 오류 점검 결과
+                    </h2>
+                    <div class="flex flex-wrap gap-2 mb-3 text-xs font-bold">
+                        <span class="bg-red-50 text-red-600 px-2 py-1 rounded-full border border-red-200">🔴 미배정</span>
+                        <span class="bg-red-50 text-red-700 px-2 py-1 rounded-full border border-red-200">⚠️ 같은시간 중복</span>
+                        <span class="bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-200">🏫 담임반 배정</span>
+                        <span class="bg-orange-50 text-orange-600 px-2 py-1 rounded-full border border-orange-200">📅 배정불가 요일·시간</span>
+                        <span class="bg-orange-50 text-orange-600 px-2 py-1 rounded-full border border-orange-200">🔥 쉬는시간 없이 연속 3교시+</span>
+                        <span class="bg-pink-50 text-pink-700 px-2 py-1 rounded-full border border-pink-200">🔄 같은 반 하루 2번</span>
+                        <span class="bg-yellow-50 text-yellow-700 px-2 py-1 rounded-full border border-yellow-200">📚 본인 과목 감독</span>
+                    </div>
+                    <div id="validation-results" class="max-h-72 overflow-y-auto space-y-2 p-1"></div>
+                </div>
+            </div>
+
+            <!-- 통계 -->
+            <div class="bg-white rounded-2xl shadow-lg p-5 md:p-6 border border-gray-200 mt-10 no-print">
+                <h2 class="text-lg md:text-xl font-black mb-4 text-gray-900 border-b-2 border-sage-500 pb-2 flex items-center">
+                    <i class="fa-solid fa-chart-pie text-sage-600 mr-2"></i>교사별 누적 배정 통계 (실시간)
+                </h2>
+                <p class="text-xs font-bold text-gray-400 mt-1 mb-2">💡 카드에 마우스를 올리면 해당 교사의 배정 위치를 확인할 수 있습니다.</p>
+                <div id="stats-container" class="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2 md:gap-3"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-4 mt-4 text-sm font-bold text-gray-400 no-print">
+        제작자: 황금보라 (t_oj032@dje.go.kr)
+    </footer>
+</div>
+
+<div id="autocomplete" class="autocomplete-dropdown no-print"></div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+const state = {
+    step:1, examDays:3, examDates:[],
+    grades:[{grade:1,classes:2,hallway:1,sub:0,floor:2},{grade:2,classes:2,hallway:1,sub:0,floor:3},{grade:3,classes:2,hallway:1,sub:0,floor:4}],
+    time:{periods:5,duration:45,breakTime:15,prepTime:5},
+    teachers:[], schedule:[], assignments:{}, draggedItem:null
+};
+
+document.getElementById('examName').value = `${new Date().getFullYear()}학년도 2학기 기말고사`;
+
+function getWeekday(ds){if(!ds)return'';return['일','월','화','수','목','금','토'][new Date(ds).getDay()];}
+
+function initDates(){let t=new Date();state.examDates=[];for(let i=0;i<state.examDays;i++){state.examDates.push(t.toISOString().split('T')[0]);t.setDate(t.getDate()+1);}renderDates();}
+function changeExamDays(d){let n=state.examDays+d;if(n<1)n=1;if(n>10)n=10;state.examDays=n;document.getElementById('examDaysDisplay').innerText=n;while(state.examDates.length<n){let l=new Date(state.examDates[state.examDates.length-1]||new Date());l.setDate(l.getDate()+1);state.examDates.push(l.toISOString().split('T')[0]);}if(state.examDates.length>n)state.examDates=state.examDates.slice(0,n);renderDates();}
+function renderDates(){const c=document.getElementById('date-inputs');c.innerHTML='';state.examDates.forEach((date,idx)=>{const wd=getWeekday(date);const col=wd==='토'?'color:#3b82f6':wd==='일'?'color:#ef4444':'color:#6b7280';c.innerHTML+=`<div style="display:flex;flex-direction:column;"><label style="font-size:12px;font-weight:700;color:#6b7280;margin-bottom:4px;">${idx+1}일차</label><input type="date" value="${date}" onchange="updateDate(${idx},this.value)" style="padding:8px;border:1px solid #d1d5db;border-radius:6px;outline:none;font-weight:700;font-size:14px;background:white;color:#1f2937;"/><span style="font-size:11px;font-weight:900;margin-top:4px;text-align:center;${col}">${wd}요일</span></div>`;});}
+function updateDate(i,v){
+    state.examDates[i]=v;
+    let base=new Date(v);
+    for(let j=i+1;j<state.examDates.length;j++){
+        base.setDate(base.getDate()+1);
+        state.examDates[j]=base.toISOString().split('T')[0];
+    }
+    renderDates();;renderSlotOptions();}
+
+function renderGrades(){
+    const c=document.getElementById('grades-container');c.innerHTML='';
+    const floorOpts=[1,2,3,4,5,6,7].map(n=>`<option value="${n}">${n}층</option>`).join('');
+    state.grades.forEach((g,idx)=>{
+        const selOpts=[1,2,3,4,5,6,7].map(n=>`<option value="${n}"${(g.floor||idx+2)===n?' selected':''}>${n}층</option>`).join('');
+        c.innerHTML+=`<div class="bg-white p-5 rounded-lg shadow-sm border-2 border-gray-200">
+            <h4 class="text-lg md:text-xl font-black text-gray-800 mb-4 pb-2 border-b-2 border-gray-100">${g.grade}학년</h4>
+            <div class="space-y-4">
+                <div class="flex justify-between font-bold gap-3"><span class="text-gray-700">학급 수</span>
+                    <div class="flex border-2 border-gray-300 rounded-lg h-10 w-28 overflow-hidden">
+                        <button onclick="changeGrade(${idx},'classes',-1)" class="w-8 bg-gray-100 text-gray-700 font-bold border-r border-gray-300">-</button>
+                        <div class="flex-1 text-center mt-2 text-gray-800">${g.classes}</div>
+                        <button onclick="changeGrade(${idx},'classes',1)" class="w-8 bg-gray-100 text-gray-700 font-bold border-l border-gray-300">+</button>
+                    </div></div>
+                <div class="flex justify-between font-bold gap-3"><span class="text-gray-700">복도감독</span>
+                    <div class="flex border-2 border-gray-300 rounded-lg h-10 w-28 overflow-hidden">
+                        <button onclick="changeGrade(${idx},'hallway',-1)" class="w-8 bg-gray-100 text-gray-700 font-bold border-r border-gray-300">-</button>
+                        <div class="flex-1 text-center mt-2 text-gray-800">${g.hallway}</div>
+                        <button onclick="changeGrade(${idx},'hallway',1)" class="w-8 bg-gray-100 text-gray-700 font-bold border-l border-gray-300">+</button>
+                    </div></div>
+                <div class="flex justify-between font-bold gap-3"><span class="text-gray-700">부감독</span>
+                    <div class="flex border-2 border-indigo-200 rounded-lg h-10 w-28 overflow-hidden">
+                        <button onclick="changeGrade(${idx},'sub',-1)" class="w-8 bg-indigo-50 text-indigo-700 font-bold border-r border-indigo-200">-</button>
+                        <div class="flex-1 text-center mt-2 text-indigo-800">${g.sub||0}</div>
+                        <button onclick="changeGrade(${idx},'sub',1)" class="w-8 bg-indigo-50 text-indigo-700 font-bold border-l border-indigo-200">+</button>
+                    </div></div>
+                <div class="flex justify-between font-bold gap-3 items-center"><span class="text-gray-700">복도 층수</span>
+                    <select onchange="changeGrade(${idx},'floor',this.value-0,true)" class="border-2 border-rose-200 rounded-lg h-10 px-2 font-bold text-rose-800 bg-rose-50 w-28">
+                        ${selOpts}
+                    </select></div>
+            </div></div>`;
+    });
+}
+function changeGrade(i,f,d,direct=false){let v=direct?d:state.grades[i][f]+d;if(!direct&&v<0)v=0;state.grades[i][f]=v;renderGrades();renderSlotOptions();}
+function renderSlotOptions(){
+    const periods=state.time.periods||5;
+    const days=state.examDays||1;
+    const dates=state.examDates||[];
+    const weekdays=['일','월','화','수','목','금','토'];
+    const hasSub=state.grades.some(g=>(g.sub||0)>0);
+    const hasHall=state.grades.some(g=>(g.hallway||0)>0);
+    const sec=document.getElementById('slot-options-section');
+    const con=document.getElementById('slot-options-container');
+    if(!sec||!con)return;
+    if(!state.slotOptions)state.slotOptions={};
+    // 초기화
+    for(let d=0;d<days;d++){
+        for(let i=1;i<=periods;i++){
+            const k=`${d}_${i}`;
+            if(!state.slotOptions[k])state.slotOptions[k]={subject:'',hasSub:true,hasHallway:true};
+        }
+    }
+    const subjects=['자습','국어','영어','수학','과학','사회','역사','도덕','체육','음악','미술','기술가정','정보','한문','제2외국어','진로','기타'];
+    const opts=subjects.map(s=>`<option value="${s}">`).join('');
+
+    // 탭 버튼 생성
+    let tabHtml='<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">';
+    for(let d=0;d<days;d++){
+        const dateStr=dates[d]||'';
+        const wd=dateStr?weekdays[new Date(dateStr).getDay()]:'';
+        const label=dateStr?`${dateStr.slice(5).replace('-','/')}(${wd})`:`${d+1}일차`;
+        tabHtml+=`<button id="slot-tab-${d}" onclick="showSlotDay(${d})"
+            style="padding:6px 14px;border-radius:8px;font-weight:900;font-size:13px;border:2px solid #307661;
+            background:${d===0?'#307661':'white'};color:${d===0?'white':'#307661'};cursor:pointer;">${label}</button>`;
+    }
+    tabHtml+='</div>';
+
+    // 각 날짜별 표 생성
+    let tableHtml='';
+    for(let d=0;d<days;d++){
+        const dateStr=dates[d]||'';
+        const wd=dateStr?weekdays[new Date(dateStr).getDay()]:'';
+        tableHtml+=`<div id="slot-day-${d}" style="display:${d===0?'block':'none'};">
+        <datalist id="slot-subj-list">${opts}</datalist>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <thead><tr style="background:#285f50;color:white;">
+                <th style="padding:9px 12px;text-align:center;font-weight:900;border:1px solid #1d4137;white-space:nowrap;">교시</th>
+                <th style="padding:9px 12px;text-align:center;font-weight:900;border:1px solid #1d4137;">과목</th>
+                ${hasSub?`<th style="padding:9px 12px;text-align:center;font-weight:900;border:1px solid #1d4137;background:#64af96;">부감독</th>`:''}
+                ${hasHall?`<th style="padding:9px 12px;text-align:center;font-weight:900;border:1px solid #1d4137;background:#429379;">복도감독</th>`:''}
+            </tr></thead><tbody>`;
+        for(let i=1;i<=periods;i++){
+            const k=`${d}_${i}`;
+            const opt=state.slotOptions[k];
+            const bg=i%2===0?'#f2f8f5':'#ffffff';
+            tableHtml+=`<tr style="background:${bg};">
+                <td style="padding:8px 12px;text-align:center;font-weight:900;border:1px solid #e5e7eb;color:#92400e;white-space:nowrap;">${i}교시</td>
+                <td style="padding:6px 8px;border:1px solid #e5e7eb;">
+                    <input list="slot-subj-list" value="${opt.subject||''}" placeholder="과목 입력"
+                        onchange="setSlotOption(${d},${i},'subject',this.value)"
+                        style="width:100%;border:2px solid #c1e1d3;border-radius:6px;padding:6px 10px;font-weight:700;font-size:14px;outline:none;background:#f9fdfb;"/>
+                </td>
+                ${hasSub?`<td style="padding:8px;text-align:center;border:1px solid #e5e7eb;background:#e8f5ee;">
+                    <input type="checkbox" ${opt.hasSub!==false?'checked':''} onchange="setSlotOption(${d},${i},'hasSub',this.checked)"
+                        style="width:18px;height:18px;accent-color:#64af96;cursor:pointer;"/></td>`:''}
+                ${hasHall?`<td style="padding:8px;text-align:center;border:1px solid #e5e7eb;background:#d4edda;">
+                    <input type="checkbox" ${opt.hasHallway!==false?'checked':''} onchange="setSlotOption(${d},${i},'hasHallway',this.checked)"
+                        style="width:18px;height:18px;accent-color:#307661;cursor:pointer;"/></td>`:''}
+            </tr>`;
+        }
+        tableHtml+='</tbody></table></div>';
+    }
+    con.innerHTML=tabHtml+tableHtml;
+}
+window.showSlotDay=function(d){
+    document.querySelectorAll('[id^="slot-day-"]').forEach(el=>el.style.display='none');
+    document.querySelectorAll('[id^="slot-tab-"]').forEach(btn=>{
+        btn.style.background='white';btn.style.color='#307661';
+    });
+    const dayEl=document.getElementById(`slot-day-${d}`);
+    const tabEl=document.getElementById(`slot-tab-${d}`);
+    if(dayEl)dayEl.style.display='block';
+    if(tabEl){tabEl.style.background='#307661';tabEl.style.color='white';}
+};
+
+window.setSlotOption=function(dayIdx,period,field,val){
+    if(!state.slotOptions)state.slotOptions={};
+    const k=`${dayIdx}_${period}`;
+    if(!state.slotOptions[k])state.slotOptions[k]={subject:'',hasSub:true,hasHallway:true};
+    state.slotOptions[k][field]=val;
+    // 과목 변경 시 해당 날짜 schedule에 반영
+    if(field==='subject' && state.schedule[dayIdx]){
+        const slot=state.schedule[dayIdx].slots?.find(s=>s.id===period);
+        if(slot)slot.subject=val;
+    }
+};
+function changeTimeSet(f,d){let v=state.time[f]+d;if(v<0)v=0;state.time[f]=v;document.getElementById(`set-${f}`).innerText=v;renderSlotOptions();}
+function toggleLunch(){document.getElementById('lunch-settings').style.display=document.getElementById('set-hasLunch').checked?'flex':'none';}
+
+initDates(); renderGrades(); renderSlotOptions();
+
+function downloadExcelTemplate(){const data=[
+    {'이름':'홍길동','과목':'국어','담당학급':'1-2','수업시수':15,'누적횟수':0,'배정불가':'화','배정역할':'','수업참여횟수':0},
+    {'이름':'김영희','과목':'수학','담당학급':'','수업시수':14,'누적횟수':2,'배정불가':'수1,수2','배정역할':'복도만','수업참여횟수':0},
+    {'이름':'박지수','과목':'영어','담당학급':'2-3','수업시수':16,'누적횟수':0,'배정불가':'화,수1,수2','배정역할':'부감독만','수업참여횟수':3},
+];const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"교사명단");XLSX.writeFile(wb,"교사명단_업로드용_양식.xlsx");}
+
+function handleExcelUpload(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(evt)=>{try{const wb=XLSX.read(evt.target.result,{type:'binary'});const data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);state.teachers=data.map((row,idx)=>{const name=row['이름']||row['성명']||row['교사명'];if(!name)return null;return{id:`T${idx}`,name:String(name).trim(),subject:row['과목']||'',homeroom:row['담당학급']?String(row['담당학급']).trim():'',classHours:Number(row['수업시수'])||0,pastCount:Number(row['누적횟수'])||0,...(()=>{
+                    const raw=String(row['배정불가']||row['배정불가요일']||'').trim();
+                    const rawTime=String(row['배정불가시간']||'').trim();
+                    const rawCombo=String(row['배정불가요일시간']||'').trim();
+                    const rawDetail=String(row['배정불가상세']||'').trim();
+                    const allToks=[raw,rawTime,rawCombo].join(',').split(/[,，\s]+/).map(s=>s.trim()).filter(Boolean);
+                    const days=[],times=[],combos=[];
+                    allToks.forEach(tok=>{
+                        if(/^[가-힣]{1,2}\d+(교시?)?$/.test(tok))combos.push(tok);
+                        else if(/^[가-힣]{1,2}$/.test(tok))days.push(tok);
+                        else if(/^\d+교시?$/.test(tok)||/^\d+$/.test(tok))times.push(tok.replace('교시',''));
+                    });
+                    return {unavailableDays:days.join(','),unavailableTimes:times.join(','),unavailableCombo:combos.join(','),unavailableDetail:rawDetail};
+                })(),
+                allowRole:(()=>{
+                    const r=String(row['배정역할']||'').trim();
+                    if(r.includes('정감독'))return 'main';
+                    if(r.includes('부감독'))return 'sub';
+                    if(r.includes('복도'))return 'hall';
+                    return 'all'; // 빈칸=모두 가능
+                })(),
+                classExtra:Number(row['수업참여횟수'])||0,
+                currentCount:0,currentMain:0,currentHall:0};}).filter(Boolean);if(state.teachers.length===0)throw new Error("없음");document.getElementById('upload-success').classList.remove('hidden');document.getElementById('teacher-count').innerHTML=`<i class="fa-solid fa-check mr-2"></i>총 ${state.teachers.length}명 교사 데이터 완료`;}catch(err){alert("엑셀 파일을 확인해주세요.");}};reader.readAsBinaryString(file);}
+function executeAutoAssignment(){if(state.teachers.length===0){alert("교사 명단을 먼저 입력해주세요.");return;}goToStep(3);}
+
+function addMinutes(t,m){if(!t)return'';const[h,mm]=t.split(':').map(Number);const d=new Date();d.setHours(h,mm+m);return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+
+function generateSchedule(){
+    const startTime=document.getElementById('set-startTime').value||'08:30';
+    const hasLunch=document.getElementById('set-hasLunch').checked;
+    const lunchAfter=Number(document.getElementById('set-lunchAfter').value);
+    const lunchDuration=Number(document.getElementById('set-lunchDuration').value);
+    const newSchedule=[];
+    for(let d=0;d<state.examDays;d++){
+        let cs=startTime,cp=addMinutes(cs,-state.time.prepTime);
+        const slots=[],dateStr=state.examDates[d]||'',wd=getWeekday(dateStr);
+        // 기존 schedule에서 과목/시간 유지
+        const prevDay=state.schedule.find(x=>x.dayId===d);
+        for(let i=1;i<=state.time.periods;i++){
+            const et=addMinutes(cs,state.time.duration),iln=hasLunch&&i===lunchAfter;
+            const ps=prevDay?prevDay.slots.find(s=>s.id===i):null;
+            const _soK=`${d}_${i}`;const _subj=(state.slotOptions&&state.slotOptions[_soK]&&state.slotOptions[_soK].subject)||ps?.subject||'';
+            slots.push({id:i,subject:_subj,prepTime:cp,startTime:cs,endTime:et,isLunchNext:iln,
+                lunchStartTime:iln?et:null,lunchEndTime:iln?addMinutes(et,lunchDuration):null,
+                lunchDuration:iln?lunchDuration:null,
+                timeDisplayHtml:ps?ps.timeDisplayHtml:null,lunchDisplayHtml:ps?ps.lunchDisplayHtml:null,
+                hasHallway:ps!=null?ps.hasHallway!==false:true,
+                hasSub:ps!=null?ps.hasSub!==false:true});
+            if(iln){cp=addMinutes(et,lunchDuration);cs=addMinutes(cp,state.time.prepTime);}
+            else{cs=addMinutes(et,state.time.breakTime);cp=addMinutes(cs,-state.time.prepTime);}
+        }
+        newSchedule.push({dayId:d,date:dateStr,weekday:wd,slots});
+    }
+    state.schedule=newSchedule;
+}
+
+window.updateSlotTime=function(di,si,html){const day=state.schedule.find(d=>d.dayId===di);if(day){const s=day.slots.find(s=>s.id===si);if(s)s.timeDisplayHtml=html;}};
+window.updateLunchTime=function(di,si,html){const day=state.schedule.find(d=>d.dayId===di);if(day){const s=day.slots.find(s=>s.id===si);if(s)s.lunchDisplayHtml=html;}};
+window.updateSlotOption=function(dayId,slotId,field,val){
+    const day=state.schedule.find(d=>d.dayId===dayId);
+    if(!day)return;
+    const slot=day.slots.find(s=>s.id===slotId);
+    if(!slot)return;
+    slot[field]=val;
+    // 해제된 자리 배정 제거
+    if(!val){
+        const prefix=field==='hasHallway'?`${dayId}_${slotId}_`:`${dayId}_${slotId}_`;
+        const suffix=field==='hasHallway'?'_H':'_S';
+        Object.keys(state.assignments).forEach(k=>{
+            if(k.startsWith(prefix)&&k.includes(suffix))delete state.assignments[k];
+        });
+    }
+    updateStats();renderTable();renderStats();
+};
+function updateSubject(di,si,v){
+    // 모든 날짜의 같은 교시 과목 동기화
+    state.schedule.forEach(day=>{
+        const s=day.slots.find(sl=>sl.id===si);if(s)s.subject=v;
+    });
+    // slotOptions에도 저장
+    if(!state.slotOptions)state.slotOptions={};
+    if(!state.slotOptions[si])state.slotOptions[si]={subject:'',hasSub:true,hasHallway:true};
+    state.slotOptions[si].subject=v;
+    // display div 갱신 (모든 날짜)
+    document.querySelectorAll(`[id^="subj-display-"][id$="-${si}"]`).forEach(el=>{
+        el.innerHTML=v||'<span style="color:#d97706;font-size:12px;font-weight:600;">과목 선택</span>';
+    });
+    document.querySelectorAll(`[id^="ps-"][id$="-${si}"]`).forEach(el=>{el.innerText=v||'';});
+}
+window.openSubjectInput=function(di,si,dispEl){
+    const inp=document.getElementById(`subj-input-${di}-${si}`);
+    if(!inp)return;
+    dispEl.style.display='none';
+    inp.style.display='block';
+    inp.focus();
+    inp.select();
+};
+window.closeSubjectInput=function(di,si){
+    const inp=document.getElementById(`subj-input-${di}-${si}`);
+    const disp=document.getElementById(`subj-display-${di}-${si}`);
+    if(!inp||!disp)return;
+    setTimeout(()=>{
+        inp.style.display='none';
+        disp.style.display='';
+    },150);
+};
+
+// ── 배정불가 판단 전역 함수 (자동배정 + 오류점검 공용) ──────
+function isAvailableForSlot(t, weekday, sid){
+    const s=String(sid);
+    // 1. 요일 전체 불가
+    if(t.unavailableDays){
+        const days=String(t.unavailableDays).split(/[,·\/\s]+/).map(x=>x.trim()).filter(Boolean);
+        if(days.some(d=>d===weekday))return false;
+    }
+    // 2. 교시 전체 불가
+    if(t.unavailableTimes){
+        const times=String(t.unavailableTimes).split(/[,·\/\s]+/).map(x=>x.trim()).filter(Boolean);
+        if(times.some(tm=>tm===s||tm===s+'교시'||tm.replace('교시','')===s))return false;
+    }
+    // 3. 요일+교시 조합 (화1, 수2 형식)
+    if(t.unavailableCombo){
+        const combos=String(t.unavailableCombo).split(/[,·\/\s]+/).map(x=>x.trim()).filter(Boolean);
+        if(combos.some(c=>{
+            const m=c.match(/^([가-힣]{1,2})(\d+)(교시?)?$/);
+            return m&&m[1]===weekday&&m[2]===s;
+        }))return false;
+    }
+    // 4. 상세 조합 (수 1,2 / 화 3 형식)
+    if(t.unavailableDetail){
+        const groups=String(t.unavailableDetail).split(/[\/;]+/).map(x=>x.trim()).filter(Boolean);
+        for(const g of groups){
+            const parts=g.trim().split(/\s+/);
+            if(parts.length<2)continue;
+            const wd=parts[0];
+            const periods=parts.slice(1).join(' ').split(/[,，\s]+/).map(x=>x.replace('교시','').trim()).filter(Boolean);
+            if(wd===weekday&&periods.some(p=>p===s))return false;
+        }
+    }
+    return true;
+}
+
+function generateAssignments(){
+    state.assignments={};
+    state.teachers.forEach(t=>{t.currentMain=0;t.currentHall=0;t.currentCount=0;});
+
+    const normTok=s=>String(s||'').split(/[,·\/\s]+/).map(x=>x.trim()).filter(Boolean);
+
+    // 배정불가 통합 판단
+    // 배정불가요일: "수" / 배정불가시간: "1교시" / 배정불가상세: "수 1,2 / 화 3"
+    // isAvailableForSlot → 전역 함수 사용
+    const lunchAfterVal=document.getElementById('set-hasLunch').checked
+        ?Number(document.getElementById('set-lunchAfter').value):999;
+
+    // ── 추적 구조 ──────────────────────────────────────
+    // daySlots[dayId][tid] = [slotId,...]   — 날짜별 배정된 교시 목록
+    // dayClass[dayId][tid] = Set<'G-C'>     — 같은 반 하루 2회 방지
+    const daySlots={}, dayClass={};
+    state.schedule.forEach(d=>{daySlots[d.dayId]={};dayClass[d.dayId]={};});
+
+    // ── 연속 교시 수 계산 (점심 경계로 끊김) ────────────
+    const streakBefore=(dayId,tid,slotId)=>{
+        const assigned=daySlots[dayId][tid]||[];
+        let streak=0, prev=slotId-1;
+        while(prev>=1 && assigned.includes(prev)){
+            if(prev<=lunchAfterVal && slotId>lunchAfterVal)break; // 점심 경계
+            streak++; prev--;
+        }
+        return streak;
+    };
+
+    // ── 교사 가용성 판단 ────────────────────────────────
+    const canAssign=(t, day, slotId, usedThisSlot, tcs, classKey, allowRepeatClass, allowStreak3, roleType)=>{
+        const sid=String(slotId);
+        // 절대 조건 (어떤 fallback에서도 위반 불가)
+        if(usedThisSlot.has(t.id))return false;
+        if(tcs&&t.homeroom===tcs)return false;
+        if(!isAvailableForSlot(t,day.weekday,sid))return false;
+        // 배정 역할 제한
+        const role=t.allowRole||'all';
+        if(role!=='all'){
+            if(roleType==='main' && role!=='main')return false;
+            if(roleType==='sub'  && role!=='sub')return false;
+            if(roleType==='hall' && role!=='hall')return false;
+        }
+        // (배정불가 요일·시간·조합 모두 isAvailableForSlot에서 통합 처리됨)
+        // 연속 3교시 방지 (allowStreak3=false일 때만 체크)
+        if(!allowStreak3 && streakBefore(day.dayId,t.id,slotId)>=2)return false;
+        // 같은 반 하루 2회 방지
+        if(!allowRepeatClass && classKey && dayClass[day.dayId][t.id]?.has(classKey))return false;
+        return true;
+    };
+
+    // ── 정렬 함수 ─────────────────────────────────────────
+    // 시수 입력 시: (누적+이번 횟수) / 시수 비율 낮은 순
+    // 시수 미입력(0): 누적+이번 횟수 절대값 낮은 순
+    // 비율이 같은 교사끼리는 랜덤 셔플 → 편차 최소화
+    const sortPool=(pool, isHall, dayId)=>{
+        const ratio=t=>{
+            const h=Number(t.classHours)||0;
+            // 수업참여횟수(classExtra)는 감독과 동일하게 100% 반영
+            const extra=(t.classExtra||0);
+            const past=(t.pastCount||0);
+            if(isHall){
+                // 복도 비율: (현재복도 + 과거추정복도 + 수업참여) / 시수
+                return (t.currentHall + Math.round(past*0.4) + Math.round(extra*0.4))/(h||1);
+            } else {
+                // 정감독 비율: (현재정감독 + 과거추정정감독 + 수업참여) / 시수
+                return (t.currentMain + Math.round(past*0.6) + Math.round(extra*0.6))/(h||1);
+            }
+        };
+        // 먼저 비율로 그룹핑 — 같은 그룹 내에서 랜덤 셔플
+        // 단계1: 비율 계산
+        pool.forEach(t=>{ t._sortRatio=ratio(t); t._sortToday=(daySlots[dayId][t.id]||[]).length; });
+        // 단계2: 오늘배정수 → 비율 순 정렬 후, 동률 구간 셔플
+        pool.sort((a,b)=>{
+            if(a._sortToday!==b._sortToday)return a._sortToday-b._sortToday;
+            return a._sortRatio-b._sortRatio;
+        });
+        // 단계3: 연속된 동률 구간을 찾아 랜덤 셔플
+        let i=0;
+        while(i<pool.length){
+            let j=i+1;
+            while(j<pool.length &&
+                  pool[j]._sortToday===pool[i]._sortToday &&
+                  Math.abs(pool[j]._sortRatio-pool[i]._sortRatio)<0.0001){j++;}
+            // i~j-1 구간 셔플 (Fisher-Yates)
+            for(let k=j-1;k>i;k--){
+                const r=i+Math.floor(Math.random()*(k-i+1));
+                [pool[k],pool[r]]=[pool[r],pool[k]];
+            }
+            i=j;
+        }
+        return pool;
+    };
+
+    // ── 한 자리 배정 (4단계 fallback, 배정불가는 절대 불가) ──
+    const assign=(day, slotId, usedThisSlot, tcs, classKey, isHall, roleType)=>{
+        // 단계1: 모든 soft 조건 포함
+        let pool=state.teachers.filter(t=>canAssign(t,day,slotId,usedThisSlot,tcs,classKey,false,false,roleType));
+        if(!pool.length)
+            // 단계2: 같은반 방지 포기
+            pool=state.teachers.filter(t=>canAssign(t,day,slotId,usedThisSlot,tcs,classKey,true,false,roleType));
+        if(!pool.length)
+            // 단계3: 연속3 허용 (배정불가요일/시간/담임반/교시중복은 절대 유지)
+            pool=state.teachers.filter(t=>canAssign(t,day,slotId,usedThisSlot,tcs,classKey,true,true,roleType));
+        if(!pool.length) return null;
+        return sortPool(pool, isHall, day.dayId)[0];
+    };
+
+    // ── 교시별 배정 ─────────────────────────────────────
+    state.schedule.forEach((day,dayIdx)=>{
+        day.slots.forEach(slot=>{
+            const usedThisSlot=new Set();
+            const _soKey=`${dayIdx}_${slot.id}`;
+            const _so=state.slotOptions&&state.slotOptions[_soKey];
+            state.grades.forEach(g=>{
+                if(g.classes===0)return;
+
+                // 정감독
+                for(let c=1;c<=g.classes;c++){
+                    const cid=`${day.dayId}_${slot.id}_${g.grade}_${c}`;
+                    const classKey=`${g.grade}-${c}`;
+                    const sel=assign(day,slot.id,usedThisSlot,classKey,classKey,false,'main');
+                    if(sel){
+                        state.assignments[cid]={teacherId:sel.id,type:'main'};
+                        usedThisSlot.add(sel.id);
+                        sel.currentMain++;sel.currentCount++;
+                        if(!daySlots[day.dayId][sel.id])daySlots[day.dayId][sel.id]=[];
+                        daySlots[day.dayId][sel.id].push(slot.id);
+                        if(!dayClass[day.dayId][sel.id])dayClass[day.dayId][sel.id]=new Set();
+                        dayClass[day.dayId][sel.id].add(classKey);
+                    }
+                }
+                // 부감독 배정 (1단계 설정 기준)
+                if(!_so||_so.hasSub!==false) for(let s=1;s<=(g.sub||0);s++){
+                    const cid=`${day.dayId}_${slot.id}_${g.grade}_S${s}`;
+                    const sel=assign(day,slot.id,usedThisSlot,null,null,false,'sub');
+                    if(sel){
+                        state.assignments[cid]={teacherId:sel.id,type:'sub'};
+                        usedThisSlot.add(sel.id);
+                        sel.currentMain++;sel.currentCount++;
+                        if(!daySlots[day.dayId][sel.id])daySlots[day.dayId][sel.id]=[];
+                        daySlots[day.dayId][sel.id].push(slot.id);
+                    }
+                }
+                if(!_so||_so.hasHallway!==false) for(let h=1;h<=g.hallway;h++){
+                    const cid=`${day.dayId}_${slot.id}_${g.grade}_H${h}`;
+                    const sel=assign(day,slot.id,usedThisSlot,null,null,true,'hall');
+                    if(sel){
+                        state.assignments[cid]={teacherId:sel.id,type:'hall'};
+                        usedThisSlot.add(sel.id);
+                        sel.currentHall++;sel.currentCount++;
+                        if(!daySlots[day.dayId][sel.id])daySlots[day.dayId][sel.id]=[];
+                        daySlots[day.dayId][sel.id].push(slot.id);
+                    }
+                }
+            });
+        });
+    });
+}
+
+
+function renderTable(){
+    document.getElementById('print-title').innerText=`${document.getElementById('examName').value} 감독교사 배정표`;
+    const ag=state.grades.filter(g=>g.classes>0);
+    let h=`<table id="assignment-table" style="min-width:600px;" class="w-full text-center"><thead><tr><th rowspan="2" class="p-2 bg-gray-200 text-black font-black w-24">날짜</th><th rowspan="2" class="p-2 col-time text-amber-900 font-black w-32">과목 및 시간</th>`;
+    ag.forEach((g,i)=>h+=`<th colspan="${g.classes+(g.sub||0)+g.hallway}" class="p-2 font-black text-lg text-black header-grade-${i}">${g.grade}학년</th>`);
+    h+=`</tr><tr>`;
+    ag.forEach((g,i)=>{for(let c=1;c<=g.classes;c++)h+=`<th class="p-2 header-grade-${i} text-black text-sm font-bold">${c}반</th>`;for(let c=1;c<=(g.sub||0);c++)h+=`<th class="p-2 col-sub-header text-indigo-900 text-sm font-black">부감독</th>`;for(let c=1;c<=g.hallway;c++)h+=`<th class="p-2 col-hallway-header text-rose-900 text-sm font-black">${g.floor||''}층 복도</th>`;});
+    h+=`</tr></thead><tbody>`;
+    state.schedule.forEach(day=>{
+        day.slots.forEach((slot,si)=>{
+            h+=`<tr>`;
+            if(si===0){const dp=day.date.split('-');const cc=day.weekday==='토'?'text-blue-600':day.weekday==='일'?'text-red-600':'text-black';const rs=day.slots.length+(day.slots.some(s=>s.isLunchNext)?1:0);h+=`<td rowspan="${rs}" class="p-1 bg-white align-middle font-black w-24"><span class="font-black ${cc} text-base whitespace-pre-wrap">${dp[1]}월 ${dp[2]}일\n(${day.weekday})</span></td>`;}
+            h+=`<td class="p-2 col-time-cell align-middle w-32 text-center" style="position:relative;">
+                <div class="font-black text-sm text-amber-700 mb-1 no-print">${slot.id}교시</div>
+                <div class="font-black text-sm text-amber-700 mb-1 hidden print-only" id="pslabel-${day.dayId}-${slot.id}">${slot.id}교시</div>
+                <div class="no-print" style="position:relative;width:100%;margin-bottom:4px;">
+                    <div id="subj-display-${day.dayId}-${slot.id}" onclick="openSubjectInput(${day.dayId},${slot.id},this)" class="font-black text-amber-900 text-base text-center cursor-pointer border-b-2 border-dashed border-amber-300 pb-1 min-h-[1.5rem]" style="color:#92400e;">${slot.subject||'<span style=\"color:#d97706;font-size:12px;font-weight:600;\">과목 선택</span>'}</div>
+                    <input list="subject-list" id="subj-input-${day.dayId}-${slot.id}" value="${slot.subject||''}" onchange="updateSubject(${day.dayId},${slot.id},this.value);closeSubjectInput(${day.dayId},${slot.id})" onblur="closeSubjectInput(${day.dayId},${slot.id})" class="font-black text-amber-900 text-base text-center border-b-2 border-amber-400 outline-none bg-amber-50" style="display:none;position:absolute;top:0;left:0;width:100%;color:#92400e;z-index:100;"/>
+                </div>
+                <div id="ps-${day.dayId}-${slot.id}" class="hidden font-black text-base mb-1 text-center" style="color:#92400e;">${slot.subject||''}</div>
+                <div class="text-xs font-bold text-amber-800 tracking-tighter editable-time text-center border border-transparent hover:border-amber-300 rounded p-1 cursor-text transition-colors" contenteditable="true" onblur="updateSlotTime(${day.dayId},${slot.id},this.innerHTML)">
+                    ${slot.timeDisplayHtml||`예령(${slot.prepTime})<br/>${slot.startTime}~${slot.endTime}`}
+                </div>
+                                </td>`;
+            ag.forEach(g=>{
+                for(let c=1;c<=g.classes;c++){const cid=`${day.dayId}_${slot.id}_${g.grade}_${c}`;const tn=(state.assignments[cid]?state.teachers.find(t=>t.id===state.assignments[cid].teacherId)?.name:'')||'';h+=`<td data-cellid="${cid}" class="p-1 md:p-2 relative font-black text-base text-black align-middle draggable-cell bg-white" draggable="true" ondragstart="onDragStart(event,'${cid}')" ondragover="onDragOver(event)" ondrop="onDrop(event,'${cid}')" ondragleave="onDragLeave(event)"><div contenteditable="true" class="editable-name" onfocus="onCellFocus(event,'${cid}')" ontouchend="onCellTouch(event,'${cid}')" onblur="onCellBlur(event,'${cid}')" onkeydown="onCellKeyDown(event)" onpaste="onCellPaste(event,'${cid}')">${tn}</div></td>`;}
+                for(let c=1;c<=(g.sub||0);c++){const cid=`${day.dayId}_${slot.id}_${g.grade}_S${c}`;const tn=(state.assignments[cid]?state.teachers.find(t=>t.id===state.assignments[cid].teacherId)?.name:'')||'';h+=`<td data-cellid="${cid}" class="p-1 md:p-2 relative font-black text-base text-indigo-900 align-middle draggable-cell col-sub-cell" draggable="true" ondragstart="onDragStart(event,'${cid}')" ondragover="onDragOver(event)" ondrop="onDrop(event,'${cid}')" ondragleave="onDragLeave(event)"><div contenteditable="true" class="editable-name" onfocus="onCellFocus(event,'${cid}')" ontouchend="onCellTouch(event,'${cid}')" onblur="onCellBlur(event,'${cid}')" onkeydown="onCellKeyDown(event)" onpaste="onCellPaste(event,'${cid}')">${tn}</div></td>`;}
+                for(let c=1;c<=g.hallway;c++){const cid=`${day.dayId}_${slot.id}_${g.grade}_H${c}`;const tn=(state.assignments[cid]?state.teachers.find(t=>t.id===state.assignments[cid].teacherId)?.name:'')||'';h+=`<td data-cellid="${cid}" class="p-1 md:p-2 relative font-black text-base text-rose-900 align-middle draggable-cell col-hallway-cell" draggable="true" ondragstart="onDragStart(event,'${cid}')" ondragover="onDragOver(event)" ondrop="onDrop(event,'${cid}')" ondragleave="onDragLeave(event)"><div contenteditable="true" class="editable-name" onfocus="onCellFocus(event,'${cid}')" ontouchend="onCellTouch(event,'${cid}')" onblur="onCellBlur(event,'${cid}')" onkeydown="onCellKeyDown(event)" onpaste="onCellPaste(event,'${cid}')">${tn}</div></td>`;}
+            });
+            h+=`</tr>`;
+            if(slot.isLunchNext){h+=`<tr class="row-lunch"><td class="p-2 align-middle w-32"><div class="font-black text-sm mb-0.5">점심시간</div><div class="font-bold text-[11px] tracking-tighter editable-time border border-transparent hover:border-green-400 rounded p-1 cursor-text transition-colors" contenteditable="true" onblur="updateLunchTime(${day.dayId},${slot.id},this.innerHTML)">${slot.lunchDisplayHtml||`${slot.lunchStartTime}~${slot.lunchEndTime}<br/>(${slot.lunchDuration}분)`}</div></td><td colspan="999" class="p-2 text-center align-middle"><span class="text-lg font-black tracking-[0.5em]">점심시간</span><span class="text-sm font-bold opacity-80 ml-2 no-print">(${slot.lunchDuration}분)</span></td></tr>`;}
+        });
+    });
+    h+=`</tbody></table>`;
+    document.getElementById('table-container').innerHTML=h;
+}
+
+let autocompleteTarget=null;
+let _touchSelecting=false; // 터치로 추천 선택 중 플래그
+// ── 드롭다운 닫기: mousedown만 (touch는 별도 처리)
+document.addEventListener('mousedown',function(e){
+    const dd=document.getElementById('autocomplete');
+    if(dd.style.display==='block'&&!dd.contains(e.target)&&e.target!==autocompleteTarget){
+        dd.style.display='none';
+    }
+});
+window.onCellFocus=function(e,cid){
+    e.target.closest('td').setAttribute('draggable','false');
+    setTimeout(()=>document.execCommand('selectAll',false,null),10);
+    autocompleteTarget=e.target;
+    // PC + 모바일 모두 onfocus에서 추천 표시
+    showRecommendations(cid,e.target);
+};
+// 모바일: 이미 포커스된 셀을 다시 탭했을 때 추천 재표시
+window.onCellTouch=function(e,cid){
+    e.stopPropagation();
+    const el=e.currentTarget;
+    if(document.activeElement===el){
+        // 이미 포커스 상태 → onfocus 안 발화 → 수동 표시
+        autocompleteTarget=el;
+        showRecommendations(cid,el);
+    }
+    // 포커스 없는 상태면 el.focus() 호출 → onfocus 자동 발화
+};
+function showRecommendations(cid,el){
+    // 요일+교시 조합 파싱 (canAssign과 동일 로직)
+        // isAvailableForSlotRec → 전역 isAvailableForSlot 사용;
+    const dd=document.getElementById('autocomplete');dd.innerHTML='';
+    const[di,si,grade,cls]=cid.split('_');const day=state.schedule.find(d=>d.dayId==di);const slot=day.slots.find(s=>s.id==si);const tcs=cls.startsWith('H')?null:`${grade}-${cls}`;
+    const used=new Set();Object.keys(state.assignments).forEach(k=>{if(k.startsWith(`${di}_${si}_`)&&k!==cid)used.add(state.assignments[k].teacherId);});
+    const normTok=s=>String(s||'').split(/[,·\/\s]+/).map(x=>x.trim()).filter(Boolean);
+
+    // 배정불가 통합 판단
+    // 배정불가요일: "수" / 배정불가시간: "1교시" / 배정불가상세: "수 1,2 / 화 3"
+    // isAvailableForSlot → 전역 함수 사용
+    const ratio=t=>{const h=Number(t.classHours)||1;return((t.pastCount||0)+(t.classExtra||0)+t.currentCount)/h;};
+    let rec=state.teachers.filter(t=>{
+        if(used.has(t.id))return false;
+        if(tcs&&t.homeroom===tcs)return false;
+        // isAvailableForSlot은 전역 함수로 처리됨
+        return true;
+    }).sort((a,b)=>{const rd=ratio(a)-ratio(b);return Math.abs(rd)>0.001?rd:a.name.localeCompare(b.name);}).slice(0,8);
+    if(rec.length===0){dd.innerHTML=`<div style="padding:8px;font-size:12px;color:#ef4444;font-weight:700;">조건에 맞는 교사 부족</div>`;}
+    else{
+        dd.innerHTML=`<div style="background:#307661;color:white;font-size:11px;font-weight:900;padding:4px 8px;text-align:center;">스마트 추천 (시수 대비 배정 적은 순)</div>`;
+        rec.forEach(teacher=>{
+            const tot=teacher.pastCount+teacher.currentCount;
+            const item=document.createElement('div');
+            item.className='autocomplete-item';
+            item.innerHTML=`<span>${teacher.name}</span><span style="font-size:11px;color:#307661;background:#e0f0e8;padding:1px 5px;border-radius:4px;">총 ${tot}회</span>`;
+            // PC: mousedown
+            item.onmousedown=(ev)=>{
+                ev.preventDefault();
+                el.innerText=teacher.name;
+                el.blur();
+            };
+            // 모바일: touchend — cid 클로저로 직접 사용
+            item.ontouchend=(ev)=>{
+                ev.preventDefault();
+                ev.stopPropagation();
+                _touchSelecting=true;
+                dd.style.display='none';
+                el.innerText=teacher.name;
+                // state에 직접 반영
+                const t2=getOrCreateTeacher(teacher.name);
+                state.assignments[cid]={teacherId:t2.id,type:cid.includes('_H')?'hall':cid.includes('_S')?'sub':'main'};
+                updateStats();
+                renderTable();
+                renderStats();
+                setTimeout(()=>{_touchSelecting=false;},500);
+            };
+            dd.appendChild(item);
+        });
+    }
+    const r=el.getBoundingClientRect();
+    const ddW=200;
+    let left=r.left;
+    let top=r.bottom+4;
+    if(left+ddW>window.innerWidth-8)left=window.innerWidth-ddW-8;
+    if(left<4)left=4;
+    if(top+230>window.innerHeight)top=r.top-234;
+    dd.style.left=`${left}px`;
+    dd.style.top=`${top}px`;
+    dd.style.width=`${ddW}px`;
+    dd.style.display='block';
+}
+// 이름으로 기존 교사 찾기 (공백 제거 후 비교 — 수동 입력 시 조건 데이터 유지)
+function findTeacherByName(name){
+    const norm=s=>s.replace(/\s/g,'');
+    return state.teachers.find(x=>norm(x.name)===norm(name))||null;
+}
+function getOrCreateTeacher(name){
+    let t=findTeacherByName(name);
+    if(!t){
+        t={id:'M_'+Date.now()+'_'+Math.random(),name:name,subject:'수동배정',homeroom:'',classHours:0,pastCount:0,unavailableDays:'',unavailableTimes:'',unavailableDetail:'',currentCount:0,currentMain:0,currentHall:0};
+        state.teachers.push(t);
+    }
+    return t;
+}
+window.onCellBlur=function(e,cid){
+    const td=e.target.closest('td');td.setAttribute('draggable','true');
+    setTimeout(()=>{
+        if(_touchSelecting)return; // 터치 선택 중이면 드롭다운 유지
+        document.getElementById('autocomplete').style.display='none';
+    },300);
+    const newName=e.target.innerText.trim();
+    const old=state.assignments[cid];
+    const oldName=old?(state.teachers.find(x=>x.id===old.teacherId)?.name||''):'';
+    if(newName===oldName)return;
+    if(newName===''){delete state.assignments[cid];}
+    else{
+        const t=getOrCreateTeacher(newName);
+        state.assignments[cid]={teacherId:t.id,type:cid.includes('_H')?'hall':cid.includes('_S')?'sub':'main'};
+    }
+    updateStats();renderStats();
+    // 배정표 셀 색상/하이라이트도 즉시 반영
+    document.querySelectorAll('.editable-name').forEach(el=>{
+        const c=el.closest('td')?.getAttribute('data-cellid')||
+                el.closest('[data-cellid]')?.getAttribute('data-cellid');
+        if(!c)return;
+        const a=state.assignments[c];
+        el.style.color=a?'':'#9ca3af';
+    });
+};
+window.onCellKeyDown=function(e){if(e.key==='Enter'){e.preventDefault();e.target.blur();}};
+
+/* ══ 붙여넣기 — 단일 셀 / 표 전체 모두 처리 ══
+   엑셀에서 배정표 전체를 복사해서 어느 셀에든 붙여넣으면
+   날짜·과목·시간 열은 자동으로 건너뛰고 교사 이름만 올바른 칸에 채웁니다. */
+window.onCellPaste=function(e,cid){
+    e.preventDefault();
+    const text=(e.originalEvent||e).clipboardData.getData('text/plain');
+
+    // 탭/줄바꿈 없으면 단순 텍스트 삽입
+    if(!text.includes('\t')&&!text.includes('\n')){
+        const sel=window.getSelection();
+        if(!sel.rangeCount)return;
+        sel.deleteFromDocument();
+        sel.getRangeAt(0).insertNode(document.createTextNode(text.trim()));
+        sel.collapseToEnd();
+        return;
+    }
+
+    const pasteRows=text.split('\n').map(r=>r.split('\t').map(c=>c.trim()));
+    // 마지막 빈 줄 제거
+    while(pasteRows.length>0&&pasteRows[pasteRows.length-1].every(c=>c==='')){pasteRows.pop();}
+    if(pasteRows.length===0)return;
+
+    const table=e.target.closest('td').closest('table');
+
+    // ── 표의 실제 행 목록 (점심행 제외, data-cellid 있는 TD가 있는 행만) ──
+    const tableRows=Array.from(table.querySelectorAll('tbody tr'))
+        .filter(tr=>tr.querySelector('td[data-cellid]'));
+
+    // ── 붙여넣기 시작 행 찾기 ──
+    const startTr=e.target.closest('td').closest('tr');
+    let startRowIdx=tableRows.findIndex(tr=>tr===startTr);
+    if(startRowIdx<0)startRowIdx=0;
+
+    // ── 붙여넣기 데이터가 헤더 행을 포함하는지 감지 ──
+    // 첫 행에 숫자가 없고 '날짜','과목','반','복도' 등 텍스트면 헤더로 간주해 건너뜀
+    let dataRows=pasteRows;
+    const firstRow=pasteRows[0];
+    const looksLikeHeader=firstRow.some(c=>/날짜|과목|시간|학년|반|복도/.test(c));
+    if(looksLikeHeader){
+        // 헤더가 여러 줄일 수 있으니 숫자 이름이 나오는 행까지 건너뜀
+        let skip=0;
+        for(let i=0;i<pasteRows.length;i++){
+            if(pasteRows[i].some(c=>/날짜|과목|시간|학년|반|복도/.test(c)))skip=i+1;
+            else break;
+        }
+        dataRows=pasteRows.slice(skip);
+        startRowIdx=0; // 헤더 포함 전체 붙여넣기면 처음부터
+    }
+
+    // ── 각 붙여넣기 행에서 교사 이름 열 위치 결정 ──
+    // 전략: 붙여넣기 열 수 vs 실제 data-cellid 칸 수를 비교해
+    //  - 열 수가 딱 맞으면 1:1 매핑
+    //  - 열 수가 더 많으면 앞쪽 비-교사 열(날짜, 과목/시간)을 건너뜀
+
+    let changed=false;
+
+    dataRows.forEach((cols,ri)=>{
+        const tr=tableRows[startRowIdx+ri];
+        if(!tr)return;
+
+        const cellTds=Array.from(tr.querySelectorAll('td[data-cellid]'));
+        if(cellTds.length===0)return;
+
+        const totalCols=cols.length;
+        const teacherCount=cellTds.length;
+
+        // 앞에서 몇 칸을 건너뛸지 계산
+        // 예: 붙여넣기 7칸, 교사칸 5개 → 앞 2칸(날짜, 과목) 건너뜀
+        const skip=totalCols-teacherCount;
+        const teacherCols=cols.slice(Math.max(0,skip));
+
+        teacherCols.forEach((name,ci)=>{
+            const ttd=cellTds[ci];
+            if(!ttd)return;
+            const tcid=ttd.getAttribute('data-cellid');
+            if(!tcid)return;
+            const n=name.trim();
+            // 과목명/시간처럼 보이는 값은 무시 (교사 이름이 아님)
+            if(/^\d{2}:\d{2}/.test(n)||/교시|예령|점심/.test(n))return;
+            if(n===''){
+                delete state.assignments[tcid];
+            }else{
+                const t=getOrCreateTeacher(n);
+                state.assignments[tcid]={teacherId:t.id,type:tcid.includes('_H')?'hall':tcid.includes('_S')?'sub':'main'};
+            }
+            changed=true;
+        });
+    });
+
+    if(changed){updateStats();renderTable();renderStats();}
+};
+
+window.onDragStart=function(e,cid){state.draggedItem={cid};e.dataTransfer.effectAllowed='move';};
+window.onDragOver=function(e){e.preventDefault();e.currentTarget.classList.add('drag-over');};
+window.onDragLeave=function(e){e.currentTarget.classList.remove('drag-over');};
+window.onDrop=function(e,tcid){e.preventDefault();e.currentTarget.classList.remove('drag-over');if(!state.draggedItem||state.draggedItem.cid===tcid)return;const scid=state.draggedItem.cid,sa=state.assignments[scid],ta=state.assignments[tcid];if(!sa)return;state.assignments[tcid]={teacherId:sa.teacherId,type:tcid.includes('_H')?'hall':tcid.includes('_S')?'sub':'main'};if(ta)state.assignments[scid]={teacherId:ta.teacherId,type:scid.includes('_H')?'hall':scid.includes('_S')?'sub':'main'};else delete state.assignments[scid];updateStats();renderTable();renderStats();};
+
+function updateStats(){
+    state.teachers.forEach(t=>{t.currentMain=0;t.currentHall=0;t.currentSub=0;t.currentCount=0;});
+    Object.values(state.assignments).forEach(a=>{
+        const t=state.teachers.find(x=>x.id===a.teacherId);
+        if(t){
+            if(a.type==='main')t.currentMain++;
+            else if(a.type==='hall')t.currentHall++;
+            else if(a.type==='sub')t.currentSub++;
+            t.currentCount++;
+        }
+    });
+    // 시수 대비 전체 감독 비율로 정렬
+    const ratio=t=>{const h=Number(t.classHours)||1;return((t.pastCount||0)+(t.classExtra||0)+t.currentCount)/h;};
+    state.teachers.sort((a,b)=>{const d=ratio(a)-ratio(b);return Math.abs(d)>0.001?d:a.name.localeCompare(b.name);});
+}
+function renderStats(){
+    // 교사별 배정 위치 수집
+    const teacherAssignments={};
+    state.schedule.forEach(day=>{
+        day.slots.forEach(slot=>{
+            state.grades.forEach(g=>{
+                const checkCids=[
+                    ...[...Array(g.classes)].map((_,i)=>`${day.dayId}_${slot.id}_${g.grade}_${i+1}`),
+                    ...[...Array(g.hallway)].map((_,i)=>`${day.dayId}_${slot.id}_${g.grade}_H${i+1}`),
+                    ...[...Array(g.sub||0)].map((_,i)=>`${day.dayId}_${slot.id}_${g.grade}_S${i+1}`),
+                ];
+                checkCids.forEach(cid=>{
+                    const a=state.assignments[cid];
+                    if(!a)return;
+                    if(!teacherAssignments[a.teacherId])teacherAssignments[a.teacherId]=[];
+                    const typeLabel=cid.includes('_H')?'복도':cid.includes('_S')?'부':'정';
+                    teacherAssignments[a.teacherId].push(`${day.date} ${slot.id}교시(${typeLabel})`);
+                });
+            });
+        });
+    });
+
+    let h='';
+    state.teachers.forEach(t=>{
+        const locs=(teacherAssignments[t.id]||[]).join('<br>');
+        h+=`<div class="border-2 border-gray-200 p-3 rounded-xl flex flex-col bg-gray-50 hover:border-sage-400 transition-colors relative group" style="min-width:130px;cursor:${locs?'pointer':'default'};">
+            <div class="font-black text-gray-900 text-lg mb-1">${t.name}${t.subject==='수동배정'?'<span style="font-size:10px;color:#3b82f6;background:#dbeafe;padding:1px 4px;border-radius:4px;margin-left:4px;">수동</span>':''}</div>
+            <div class="text-sm font-bold text-blue-700">이번 배정: ${t.currentCount}회</div>
+            <div class="text-xs font-bold text-gray-600">(정 ${t.currentMain} / 부 ${t.currentSub||0} / 복도 ${t.currentHall})</div>
+            <div class="text-xs text-gray-400 border-t border-gray-300 mt-2 pt-1 font-bold">기존 누적: ${t.pastCount}회</div>
+            ${locs?`<div class="hidden group-hover:block absolute bottom-full left-0 z-50 bg-gray-900 text-white text-xs rounded-lg p-2 mb-1 whitespace-nowrap shadow-xl" style="min-width:160px;line-height:1.6;">${locs}</div>`:''}
+        </div>`;
+    });
+    document.getElementById('stats-container').innerHTML=h;
+}
+
+window.runInspection=function(){
+    if(autocompleteTarget)autocompleteTarget.blur();
+    const rd=document.getElementById('validation-results');
+    rd.innerHTML='';
+    let ec=0;
+    const ag=state.grades.filter(g=>g.classes>0);
+
+    // ── 배정불가 통합 판단 함수 (자동배정과 완전히 동일) ──
+        // chkAvail: isAvailableForSlot과 동일 (오류점검용 alias)
+    const chkAvail=(t,weekday,sid)=>isAvailableForSlot(t,weekday,String(sid));
+
+    // ─────────────────────────────────────────────
+    // 1. 미배정 점검
+    // ─────────────────────────────────────────────
+    state.schedule.forEach(day=>{
+        day.slots.forEach(slot=>{
+            ag.forEach(g=>{
+                for(let i=1;i<=g.classes;i++){
+                    const cid=`${day.dayId}_${slot.id}_${g.grade}_${i}`;
+                    if(!state.assignments[cid]){addErr(`[${day.date} ${slot.id}교시] ${g.grade}학년 ${i}반 정감독 <b>미배정</b>`,'text-red-500','fa-user-xmark');ec++;}
+                }
+                const _dayIdx2=state.schedule.indexOf(day);
+                const _sopt=state.slotOptions&&state.slotOptions[`${_dayIdx2}_${slot.id}`];
+                if(!_sopt||_sopt.hasSub!==false) for(let i=1;i<=(g.sub||0);i++){
+                    const cid=`${day.dayId}_${slot.id}_${g.grade}_S${i}`;
+                    if(!state.assignments[cid]){addErr(`[${day.date} ${slot.id}교시] ${g.grade}학년 부감독(${i}) <b>미배정</b>`,'text-red-500','fa-user-xmark');ec++;}
+                }
+                if(!_sopt||_sopt.hasHallway!==false) for(let i=1;i<=g.hallway;i++){
+                    const cid=`${day.dayId}_${slot.id}_${g.grade}_H${i}`;
+                    if(!state.assignments[cid]){addErr(`[${day.date} ${slot.id}교시] ${g.grade}학년 복도감독(${i}) <b>미배정</b>`,'text-red-500','fa-user-xmark');ec++;}
+                }
+            });
+        });
+    });
+
+    // ─────────────────────────────────────────────
+    // 2. 교시별 교사 조건 점검
+    //    (같은 시간 중복 / 담임반 / 배정불가요일·시간)
+    // ─────────────────────────────────────────────
+    state.schedule.forEach(day=>{
+        day.slots.forEach(slot=>{
+            // 이 교시에 배정된 교사별 셀 목록
+            const slotMap={};  // tid → [cellId, ...]
+            Object.keys(state.assignments).forEach(k=>{
+                if(!k.startsWith(`${day.dayId}_${slot.id}_`))return;
+                const tid=state.assignments[k].teacherId;
+                if(!slotMap[tid])slotMap[tid]=[];
+                slotMap[tid].push(k);
+            });
+
+            Object.keys(slotMap).forEach(tid=>{
+                const t=state.teachers.find(x=>x.id===tid);if(!t)return;
+                const cells=slotMap[tid];
+
+                // 같은 시간 2곳 이상 중복 배정
+                if(cells.length>1){
+                    addErr(`[${day.date} ${slot.id}교시] <b>${t.name}</b> 동시에 ${cells.length}곳 <b>중복 배정</b>`,'text-red-600','fa-triangle-exclamation');ec++;
+                }
+
+                // 담임반에 정감독으로 배정 (H=복도, S=부감독 제외, 숫자반만 체크)
+                cells.forEach(k=>{
+                    const parts=k.split('_');
+                    const grade=parts[2], cls=parts[3];
+                    if(/^\d+$/.test(cls) && t.homeroom===`${grade}-${cls}`){
+                        addErr(`[${day.date} ${slot.id}교시] <b>${t.name}</b> 교사가 <b>담임반(${grade}학년 ${cls}반)</b>에 정감독 배정`,'text-purple-600','fa-person-chalkboard');ec++;
+                    }
+                });
+
+                // 배정불가 조건 위반 — chkAvail로 자동배정과 동일하게 판단
+                if(!chkAvail(t,day.weekday,slot.id)){
+                    addErr(`[${day.date} ${slot.id}교시] <b>${t.name}</b> 교사 <b>배정불가 조건 위반</b>`,'text-orange-600','fa-calendar-xmark');ec++;
+                }
+            });
+
+            // 같은 반(교시)에 동일 교사가 정감독+복도로 동시 2회
+            // (위 중복 점검에 포함되므로 별도 불필요)
+        });
+    });
+
+    // ─────────────────────────────────────────────
+    // 3. 날짜별 교사 조건 점검
+    //    (하루 2회 이상 / 연속 3교시+ / 같은 반 2번 이상 배정)
+    // ─────────────────────────────────────────────
+    state.schedule.forEach(day=>{
+        // 날짜 내 교사별 배정 맵: tid → [{slotId, grade, cls}, ...]
+        const dayMap={};
+        Object.keys(state.assignments).forEach(k=>{
+            const parts=k.split('_');
+            if(Number(parts[0])!==day.dayId)return;
+            const tid=state.assignments[k].teacherId;
+            if(!dayMap[tid])dayMap[tid]=[];
+            dayMap[tid].push({slotId:Number(parts[1]),grade:parts[2],cls:parts[3]});
+        });
+
+        Object.keys(dayMap).forEach(tid=>{
+            const t=state.teachers.find(x=>x.id===tid);if(!t)return;
+            const entries=dayMap[tid];
+
+            // 연속 3교시 이상 — 점심으로 끊기면 연속 아님
+            // state.time 설정에서 점심 위치 파악
+            const lunchAfter=document.getElementById('set-hasLunch').checked
+                ?Number(document.getElementById('set-lunchAfter').value):999;
+            const uniqueSlots=[...new Set(entries.map(e=>e.slotId))].sort((a,b)=>a-b);
+            let streak=1,streakStart=uniqueSlots[0],reported=false;
+            for(let i=1;i<uniqueSlots.length;i++){
+                const prev=uniqueSlots[i-1],cur=uniqueSlots[i];
+                // 두 교시 사이에 점심이 끼어 있으면 연속 끊김
+                const lunchBetween=(prev<=lunchAfter&&cur>lunchAfter);
+                if(cur===prev+1&&!lunchBetween){
+                    streak++;
+                    if(streak>=3&&!reported){
+                        addErr(`[${day.date}] <b>${t.name}</b> <b>${streakStart}~${cur}교시 쉬는시간 없이 연속 ${streak}교시 감독</b>`,'text-orange-500','fa-fire');ec++;
+                        reported=true;
+                    }
+                }else{streak=1;streakStart=cur;reported=false;}
+            }
+
+            // 같은 반에 2번 이상 배정 (다른 교시에 같은 반 정감독)
+            const classCount={};
+            entries.forEach(e=>{
+                if(e.cls.startsWith('H'))return; // 복도 제외
+                const key=`${e.grade}-${e.cls}`;
+                classCount[key]=(classCount[key]||0)+1;
+            });
+            Object.keys(classCount).forEach(key=>{
+                if(classCount[key]>=2){
+                    addErr(`[${day.date}] <b>${t.name}</b> <b>${key.replace('-','학년 ')}반</b>에 하루 ${classCount[key]}번 정감독 배정`,'text-pink-600','fa-repeat');ec++;
+                }
+            });
+        });
+    });
+
+    // 본인 과목 감독 점검
+    state.schedule.forEach(day=>{
+        day.slots.forEach(slot=>{
+            if(!slot.subject||slot.subject==='자습')return;
+            const slotSubj=slot.subject.trim().replace(/\s/g,'');
+            Object.keys(state.assignments).forEach(cid=>{
+                if(!cid.startsWith(`${day.dayId}_${slot.id}_`))return;
+                const a=state.assignments[cid];
+                const t=state.teachers.find(x=>x.id===a.teacherId);
+                if(!t||!t.subject)return;
+                const teachSubj=t.subject.trim().replace(/\s/g,'');
+                if(slotSubj&&teachSubj&&slotSubj===teachSubj){
+                    const role=cid.includes('_H')?'복도감독':cid.includes('_S')?'부감독':'정감독';
+                    addErr(`[${day.date} ${slot.id}교시] <b>${t.name}</b> 교사 본인 과목(${t.subject}) <b>${role}</b> 배정`,'text-yellow-600','fa-book');ec++;
+                }
+            });
+        });
+    });
+
+    if(ec===0)rd.innerHTML=`<div style="padding:16px;background:#f0fdf4;color:#15803d;border-radius:8px;text-align:center;font-weight:900;font-size:18px;border:1px solid #86efac;"><i class="fa-solid fa-circle-check" style="margin-right:8px;"></i>완벽합니다! 오류가 없습니다.</div>`;
+    document.getElementById('validation-modal').classList.remove('hidden');
+    document.getElementById('validation-modal').classList.add('flex');
+};
+function addErr(msg,col,icon){const d=document.createElement('div');d.className=`p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm ${col} flex items-start gap-2`;d.innerHTML=`<i class="fa-solid ${icon} mt-1"></i><span>${msg}</span>`;document.getElementById('validation-results').appendChild(d);}
+window.closeValidationModal=function(){document.getElementById('validation-modal').classList.add('hidden');document.getElementById('validation-modal').classList.remove('flex');};
+
+/* ══ PDF 저장 — 같은 페이지 오버레이 방식 (모바일 컬러 보장) ══ */
+window.printInNewWindow=function(){
+    const titleText=document.getElementById('print-title').innerText;
+    const criteriaText=document.getElementById('criteria-text').value;
+    const table=document.getElementById('assignment-table');
+    if(!table){alert('배정표를 먼저 생성해주세요.');return;}
+
+    const bgMap={'header-grade-0':'#dbeafe','header-grade-1':'#dcfce7','header-grade-2':'#f3e8ff',
+        'col-time':'#fef3c7','col-time-cell':'#fffbeb','col-hallway-header':'#ffe4e6',
+        'col-hallway-cell':'#fff1f2','row-lunch':'#d1fae5','bg-gray-200':'#e5e7eb','bg-white':'#ffffff'};
+    function getBg(el){for(const[k,v]of Object.entries(bgMap))if(el.classList.contains(k))return v;return'#fff';}
+    function getTxt(el){
+        if(el.classList.contains('row-lunch'))return'#064e3b';
+        if(el.classList.contains('col-hallway-cell')||el.classList.contains('col-hallway-header'))return'#9f1239';
+        if(el.classList.contains('col-time')||el.classList.contains('col-time-cell'))return'#92400e';
+        return'#000';
+    }
+
+    // 폰트: Noto Sans KR (모든 OS에서 한글 정상 출력)
+    const FONT=`'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif`;
+    const CA='-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;';
+    const CS=`border:1.5px solid #000 !important;padding:5px 4px;font-size:9.5pt;font-family:${FONT};line-height:1.3;text-align:center;vertical-align:middle;${CA}`;
+    const TS=`border-collapse:collapse !important;width:100%;table-layout:auto;${CA}`;
+
+    let nt=`<table style="${TS}"><thead>`;
+    table.querySelectorAll('thead tr').forEach(tr=>{
+        nt+='<tr>';
+        tr.querySelectorAll('th').forEach(th=>{
+            const bg=getBg(th),tc=getTxt(th);
+            const cs=th.getAttribute('colspan')?`colspan="${th.getAttribute('colspan')}"`:'' ;
+            const rs=th.getAttribute('rowspan')?`rowspan="${th.getAttribute('rowspan')}"`:'' ;
+            nt+=`<th ${cs} ${rs} style="${CS}background:${bg} !important;color:${tc};font-weight:900;">${th.innerText.trim()}</th>`;
+        });
+        nt+='</tr>';
+    });
+    nt+='</thead><tbody>';
+    table.querySelectorAll('tbody tr').forEach(tr=>{
+        const iln=tr.classList.contains('row-lunch');
+        nt+='<tr>';
+        tr.querySelectorAll('td').forEach(td=>{
+            const bg=iln?'#d1fae5':getBg(td);
+            const tc=iln?'#064e3b':getTxt(td);
+            const cs=td.getAttribute('colspan')?'colspan="999"':'' ;
+            const rs=td.getAttribute('rowspan')?`rowspan="${td.getAttribute('rowspan')}"`:'' ;
+            let txt='';
+            if(iln){
+                txt=td.innerText.trim().replace(/\n+/g,'<br>');
+            } else {
+                // 과목+교시 셀: subj-display div 또는 input value 우선 읽기
+                const subjDisp=td.querySelector('[id^="subj-display-"]');
+                const subjInp=td.querySelector('[id^="subj-input-"]');
+                const et=td.querySelector('.editable-time');
+                const en=td.querySelector('.editable-name');
+                const slotLabel=td.querySelector('.no-print.font-black.text-sm');
+                if(et){
+                    const sv=subjDisp?subjDisp.innerText.replace('과목 선택','').trim()
+                              :(subjInp?subjInp.value.trim():'');
+                    const slotNum=slotLabel?slotLabel.innerText.trim():'';
+                    const subjectLine=slotNum?(slotNum+(sv?' '+sv:'')):(sv||'');
+                    txt=(subjectLine?`<b>${subjectLine}</b><br>`:'')+et.innerText.trim().replace(/\n+/g,'<br>');
+                } else if(en){
+                    txt=en.innerText.trim();
+                } else {
+                    txt=td.innerText.trim().replace(/\n+/g,'<br>');
+                }
+            }
+            nt+=`<td ${cs} ${rs} style="${CS}background:${bg} !important;color:${tc};font-weight:${iln?700:900};">${txt}</td>`;
+        });
+        nt+='</tr>';
+    });
+    nt+='</tbody></table>';
+
+    // ── 기존 인쇄 오버레이 제거 후 새로 생성 ──
+    const OLD=document.getElementById('__print_overlay__');
+    if(OLD)OLD.remove();
+    const style=document.createElement('style');
+    style.id='__print_style__';
+    style.textContent=`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        @media print {
+            body > *:not(#__print_overlay__) { display:none !important; }
+            #__print_overlay__ { display:block !important; position:static !important; }
+        }
+        @page { size:landscape; margin:8mm; }
+        #__print_overlay__ {
+            display:none;
+            position:fixed; inset:0; z-index:99999;
+            background:#fff; overflow:auto; padding:12px;
+            font-family:${FONT};
+            -webkit-print-color-adjust:exact !important;
+            print-color-adjust:exact !important;
+            color-adjust:exact !important;
+        }
+        #__print_overlay__ h2 {
+            text-align:center; font-size:16pt; font-weight:900;
+            border-bottom:2.5px solid #000; padding-bottom:6px; margin-bottom:10px;
+            font-family:${FONT};
+        }
+        #__print_overlay__ table { border-collapse:collapse !important; width:100%; }
+        #__print_overlay__ th, #__print_overlay__ td { border:1.5px solid #000 !important; }
+        #__print_overlay__ .criteria {
+            margin-top:8px; padding:6px 8px; border:1.5px solid #000;
+            font-size:9pt; font-weight:700; white-space:pre-wrap; font-family:${FONT};
+        }
+        #__print_overlay__ .prt-btn-row { text-align:center; margin-top:16px; display:flex; gap:12px; justify-content:center; }
+        @media print { #__print_overlay__ .prt-btn-row { display:none !important; } }
+    `;
+    const OLD_STYLE=document.getElementById('__print_style__');
+    if(OLD_STYLE)OLD_STYLE.remove();
+    document.head.appendChild(style);
+
+    const overlay=document.createElement('div');
+    overlay.id='__print_overlay__';
+    overlay.innerHTML=`
+        <h2>${titleText}</h2>
+        ${nt}
+        <div class="criteria">${criteriaText}</div>
+        <div class="prt-btn-row">
+            <button onclick="window.print()" style="background:#285f50;color:white;border:none;padding:14px 36px;font-size:14pt;font-weight:900;border-radius:8px;cursor:pointer;font-family:${FONT};">🖨️ 인쇄 / PDF 저장</button>
+            <button onclick="document.getElementById('__print_overlay__').style.display='none'" style="background:#6b7280;color:white;border:none;padding:14px 24px;font-size:14pt;font-weight:900;border-radius:8px;cursor:pointer;font-family:${FONT};">✕ 닫기</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.style.display='block';
+    // 폰트 로드 후 인쇄 (모바일에서 폰트 다운로드 대기)
+    if(document.fonts && document.fonts.ready){
+        document.fonts.ready.then(()=>{ /* 사용자가 직접 버튼 클릭 */ });
+    }
+};
+
+/* ══ 엑셀 저장 — 복원 메타 포함 ══ */
+window.exportToExcel=function(){
+    try{
+        const tbl=document.getElementById('assignment-table').cloneNode(true);
+        // 과목 input → span으로 교체 (no-print 제거 전에 먼저 처리)
+        tbl.querySelectorAll('input').forEach(inp=>{
+            const sp=document.createElement('span');
+            sp.textContent=inp.value||'';
+            inp.parentNode.replaceChild(sp,inp);
+        });
+        // no-print 제거, hidden 해제
+        tbl.querySelectorAll('.no-print').forEach(el=>el.remove());
+        tbl.querySelectorAll('[class*="hidden"]').forEach(el=>{
+            el.style.display='';
+            el.classList.remove('hidden');
+        });
+        const wb=XLSX.utils.book_new();
+        const ws=XLSX.utils.table_to_sheet(tbl,{raw:true});
+        ws['!pageSetup']={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9};
+        const rng=XLSX.utils.decode_range(ws['!ref']||'A1');const cw=[];
+        for(let C=rng.s.c;C<=rng.e.c;C++){let mx=8;for(let R=rng.s.r;R<=rng.e.r;R++){const cell=ws[XLSX.utils.encode_cell({r:R,c:C})];if(cell&&cell.v){const l=String(cell.v).length;if(l>mx)mx=l;}}cw.push({wch:Math.min(mx+2,20)});}
+        ws['!cols']=cw;
+        XLSX.utils.book_append_sheet(wb,ws,'배정표');
+
+        // 복원 메타 시트
+        const meta=[['KEY','VALUE']];
+        meta.push(['examName',document.getElementById('examName').value]);
+        meta.push(['examDays',state.examDays]);
+        meta.push(['examDates',JSON.stringify(state.examDates)]);
+        meta.push(['grades',JSON.stringify(state.grades)]);
+        meta.push(['timePeriods',state.time.periods]);
+        meta.push(['timeDuration',state.time.duration]);
+        meta.push(['timeBreak',state.time.breakTime]);
+        meta.push(['timePrep',state.time.prepTime]);
+        meta.push(['timeStart',document.getElementById('set-startTime').value]);
+        meta.push(['hasLunch',document.getElementById('set-hasLunch').checked?'1':'0']);
+        meta.push(['lunchAfter',document.getElementById('set-lunchAfter').value]);
+        meta.push(['lunchDuration',document.getElementById('set-lunchDuration').value]);
+        meta.push(['teachers',JSON.stringify(state.teachers)]);
+        meta.push(['assignments',JSON.stringify(state.assignments)]);
+        // 과목명·시간 표시 데이터 포함
+        meta.push(['scheduleSlots',JSON.stringify(state.schedule.map(day=>({
+            dayId:day.dayId, date:day.date,
+            slots:day.slots.map(s=>({id:s.id,subject:s.subject||'',timeDisplayHtml:s.timeDisplayHtml||null,lunchDisplayHtml:s.lunchDisplayHtml||null}))
+        })))]);
+        meta.push(['criteriaText',document.getElementById('criteria-text').value]);
+        XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(meta),'_복원데이터');
+
+        const name=document.getElementById('examName').value||'감독교사_배정표';
+        XLSX.writeFile(wb,`${name}.xlsx`);
+    }catch(err){alert('엑셀 내보내기 오류: '+err.message);}
+};
+
+/* ══ 엑셀로 전체 복원 ══ */
+window.restoreFromExcel=function(e){
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(evt)=>{
+        try{
+            const wb=XLSX.read(evt.target.result,{type:'binary'});
+            const mSheet=wb.Sheets['_복원데이터'];
+            if(!mSheet){alert('이 시스템에서 저장한 파일이 아닙니다.\n"엑셀(Excel) 저장" 버튼으로 저장한 파일을 올려주세요.');return;}
+            const rows=XLSX.utils.sheet_to_json(mSheet,{header:1}),meta={};
+            rows.slice(1).forEach(r=>{if(r[0])meta[r[0]]=r[1];});
+
+            if(meta.examName)document.getElementById('examName').value=meta.examName;
+            if(meta.examDays){state.examDays=Number(meta.examDays);document.getElementById('examDaysDisplay').innerText=state.examDays;}
+            if(meta.examDates)state.examDates=JSON.parse(meta.examDates);
+            if(meta.grades)state.grades=JSON.parse(meta.grades);
+            if(meta.timePeriods){state.time.periods=Number(meta.timePeriods);document.getElementById('set-periods').innerText=state.time.periods;}
+            if(meta.timeDuration){state.time.duration=Number(meta.timeDuration);document.getElementById('set-duration').innerText=state.time.duration;}
+            if(meta.timeBreak){state.time.breakTime=Number(meta.timeBreak);document.getElementById('set-breakTime').innerText=state.time.breakTime;}
+            if(meta.timePrep){state.time.prepTime=Number(meta.timePrep);document.getElementById('set-prepTime').innerText=state.time.prepTime;}
+            if(meta.timeStart)document.getElementById('set-startTime').value=meta.timeStart;
+            const hl=meta.hasLunch==='1'||meta.hasLunch===1;
+            document.getElementById('set-hasLunch').checked=hl;
+            document.getElementById('lunch-settings').style.display=hl?'flex':'none';
+            if(meta.lunchAfter)document.getElementById('set-lunchAfter').value=meta.lunchAfter;
+            if(meta.lunchDuration)document.getElementById('set-lunchDuration').value=meta.lunchDuration;
+            if(meta.teachers)state.teachers=JSON.parse(meta.teachers);
+            if(meta.assignments)state.assignments=JSON.parse(meta.assignments);
+            if(meta.scheduleSlots)state._restoredSlots=JSON.parse(meta.scheduleSlots);
+            if(meta.criteriaText)state._criteriaText=meta.criteriaText;
+
+            renderDates();renderGrades();
+            document.getElementById('restore-msg-text').innerText=`"${meta.examName||'배정표'}" 복원 완료! "3. 최종 배정표" 탭을 클릭하면 이전 내용이 그대로 나타납니다.`;
+            document.getElementById('restore-msg').classList.remove('hidden');
+        }catch(err){alert('파일 불러오기 오류: '+err.message);}
+    };
+    reader.readAsBinaryString(file);
+};
+
+window.goToStep=function(n){
+    document.querySelectorAll('.step-btn').forEach(b=>b.className='step-btn flex-1 md:flex-none px-3 md:px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-sage-100 hover:bg-sage-600');
+    document.getElementById(`btn-step${n}`).className='step-btn flex-1 md:flex-none px-3 md:px-4 py-2 rounded-lg transition-colors whitespace-nowrap bg-white text-sage-700 shadow';
+    [1,2,3].forEach(i=>document.getElementById(`step${i}-container`).classList.add('hidden-step'));
+    document.getElementById(`step${n}-container`).classList.remove('hidden-step');
+    if(n===3){
+        generateSchedule();
+        // 복원된 과목/시간 데이터 덮어씌우기
+        if(state._restoredSlots){
+            state._restoredSlots.forEach(saved=>{
+                const day=state.schedule.find(d=>d.dayId===saved.dayId);
+                if(!day)return;
+                saved.slots.forEach(ss=>{const slot=day.slots.find(s=>s.id===ss.id);if(!slot)return;slot.subject=ss.subject||'';slot.timeDisplayHtml=ss.timeDisplayHtml||null;slot.lunchDisplayHtml=ss.lunchDisplayHtml||null;});
+            });
+            delete state._restoredSlots;
+        }
+        // slotOptions 과목을 schedule에 재반영 (복원 덮어쓰기 방지)
+        if(state.slotOptions){
+            state.schedule.forEach((day,dayIdx)=>{
+                day.slots.forEach(slot=>{
+                    const k=`${dayIdx}_${slot.id}`;
+                    if(state.slotOptions[k]&&state.slotOptions[k].subject){
+                        slot.subject=state.slotOptions[k].subject;
+                    }
+                });
+            });
+        }
+        if(Object.keys(state.assignments).length===0)generateAssignments();
+        updateStats();renderTable();renderStats();
+        if(state._criteriaText){document.getElementById('criteria-text').value=state._criteriaText;delete state._criteriaText;}
+    }
+};
+</script>
+</body>
+</html>

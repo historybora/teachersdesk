@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
+<title>🕵️ 기후 탐정단 — 범인 도시를 찾아라!</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Jua&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#0f1117;
+  font-family:'Noto Sans KR',sans-serif;color:#e8eaf6}
+#app{display:flex;flex-direction:column;width:100%;height:100dvh}
+
+/* ── HUD ── */
+.hud{flex-shrink:0;background:linear-gradient(135deg,#0a0d1a,#111827);
+  border-bottom:1px solid rgba(255,213,79,.2);padding:7px 14px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hud-left{display:flex;flex-direction:column}
+.hud-title{font-family:'Jua',sans-serif;font-size:clamp(13px,3vw,17px);color:#ffd54f}
+.hud-sub{font-size:9px;color:#546e7a}
+.hud-right{display:flex;align-items:center;gap:8px}
+.pts-bar{display:flex;align-items:center;gap:4px;background:rgba(255,213,79,.1);
+  border:1px solid rgba(255,213,79,.3);border-radius:18px;padding:3px 10px}
+.pts-val{font-family:'Jua',sans-serif;font-size:14px;color:#ffd54f}
+.case-prog{display:flex;gap:3px}
+.cp{width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);font-size:9px;
+  display:flex;align-items:center;justify-content:center;transition:all .3s}
+.cp.done{background:#4caf50;border-color:#4caf50}
+.cp.active{background:rgba(255,213,79,.3);border-color:#ffd54f;animation:cpulse 1.5s infinite}
+@keyframes cpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,213,79,.5)}50%{box-shadow:0 0 0 5px rgba(255,213,79,0)}}
+
+/* ── 케이스 바 ── */
+.casebar{flex-shrink:0;display:flex;background:#080b14;
+  border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;scrollbar-width:none}
+.casebar::-webkit-scrollbar{display:none}
+.casetab{flex-shrink:0;padding:8px 14px;border:none;cursor:pointer;font-size:11px;
+  font-weight:700;font-family:'Noto Sans KR',sans-serif;white-space:nowrap;
+  background:transparent;color:#37474f;border-bottom:3px solid transparent;
+  transition:all .2s;pointer-events:none}
+.casetab.unlocked{color:#78909c;pointer-events:all}
+.casetab.unlocked:hover{color:#90caf9}
+.casetab.active{color:#ffd54f;border-bottom-color:#ffd54f;background:rgba(255,213,79,.05)}
+.casetab.solved{color:#4caf50;pointer-events:all}
+.casetab.solved.active{color:#4caf50;border-bottom-color:#4caf50}
+.lock-icon{margin-right:3px;font-size:10px;opacity:.4}
+
+/* ── 섹션 ── */
+.sec{display:none;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
+.sec.on{display:flex;flex-direction:column}
+.inner{max-width:900px;width:100%;margin:0 auto;padding:12px 12px 90px}
+
+/* ── 사건 파일 헤더 ── */
+.case-file{background:linear-gradient(135deg,rgba(255,213,79,.06),rgba(255,165,0,.04));
+  border:1.5px solid rgba(255,213,79,.25);border-radius:16px;padding:13px;
+  margin-bottom:12px;position:relative;overflow:hidden}
+.case-file::before{content:'';position:absolute;top:0;right:0;width:80px;height:80px;
+  background:rgba(255,213,79,.04);border-radius:0 0 0 80px}
+.case-num{font-size:9px;color:#ffd54f;font-weight:700;letter-spacing:1px;margin-bottom:3px}
+.case-title{font-family:'Jua',sans-serif;font-size:16px;color:#fff;margin-bottom:6px}
+.case-desc{font-size:12px;color:#90caf9;line-height:1.7}
+.case-clue{background:rgba(255,213,79,.08);border-left:3px solid #ffd54f;
+  padding:7px 10px;border-radius:0 8px 8px 0;font-size:12px;color:#fff9c4;
+  line-height:1.6;margin-top:8px}
+.case-clue b{color:#ffd54f}
+
+/* ── 코스모 대화 ── */
+.cosmo-row{display:flex;gap:9px;align-items:flex-start;margin-bottom:11px}
+.cosmo-av{flex-shrink:0;width:44px;height:44px;border-radius:50%;
+  background:linear-gradient(135deg,#1565c0,#4527a0);
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+  border:2px solid rgba(100,140,255,.4);position:relative}
+.cosmo-dot{position:absolute;bottom:0;right:0;width:9px;height:9px;
+  border-radius:50%;background:#4caf50;border:1.5px solid #0f1117}
+.cosmo-bubble{flex:1;background:rgba(30,42,74,.9);border:1px solid rgba(100,140,255,.25);
+  border-radius:4px 14px 14px 14px;padding:10px 12px;
+  font-size:12.5px;color:#e8eaf6;line-height:1.8}
+.cosmo-bubble b{color:#ffd54f}
+.cosmo-bubble .em{color:#80cbc4}
+
+/* ── 단서 카드 ── */
+.clue-card{background:rgba(20,28,50,.8);border:1px solid rgba(100,140,255,.2);
+  border-radius:13px;padding:11px;margin-bottom:10px}
+.clue-card.highlight{border-color:rgba(255,213,79,.4);background:rgba(255,213,79,.04)}
+.ctitle{font-size:10px;color:#546e7a;font-weight:700;text-align:center;margin-bottom:7px;
+  letter-spacing:.5px}
+
+/* ── 지구본 ── */
+.globe-w{background:radial-gradient(ellipse at 40% 40%,#0d2040,#050a1a);
+  border-radius:13px;overflow:hidden;border:1px solid rgba(100,180,255,.2)}
+.globe-w.draggable{cursor:grab;touch-action:none;user-select:none}
+.globe-w.draggable:active{cursor:grabbing}
+.globe-w svg{display:block;width:100%;height:auto}
+/* 핀 */
+.pin-ov{position:relative}
+.pin-ov .city-pin{position:absolute;transform:translate(-50%,-100%);
+  display:flex;flex-direction:column;align-items:center;z-index:10;pointer-events:none}
+.pin-ov .city-pin .pl{color:#fff;font-size:8px;font-weight:700;padding:2px 5px;
+  border-radius:7px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.6);
+  pointer-events:all;cursor:pointer}
+.pin-ov .city-pin .pd{width:6px;height:6px;border-radius:50%;border:1.5px solid #fff;margin-top:1px}
+
+/* ── 증거 수집 (퀴즈) ── */
+.evidence-box{background:linear-gradient(135deg,rgba(20,28,50,.95),rgba(10,15,30,.95));
+  border:2px solid rgba(255,213,79,.3);border-radius:14px;padding:13px;margin-bottom:11px}
+.ev-title{font-family:'Jua',sans-serif;font-size:13px;color:#ffd54f;
+  margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.ev-q{color:#e8eaf6;font-size:13.5px;font-weight:700;line-height:1.65;margin-bottom:9px}
+.ev-opt{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(100,140,255,.2);border-radius:10px;padding:9px 12px;
+  cursor:pointer;font-size:12.5px;color:#e8eaf6;width:100%;text-align:left;
+  transition:all .18s;margin-bottom:6px;font-family:'Noto Sans KR',sans-serif}
+.ev-opt:hover:not(:disabled){border-color:rgba(255,213,79,.5);background:rgba(255,213,79,.07)}
+.ev-opt.ok{background:rgba(76,175,80,.15);border-color:#4caf50;color:#a5d6a7}
+.ev-opt.ng{background:rgba(244,67,54,.12);border-color:#ef5350;color:#ef9a9a}
+.ev-opt:disabled{cursor:default}
+.ev-num{width:24px;height:24px;border-radius:6px;background:rgba(100,140,255,.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;flex-shrink:0;color:#7986cb}
+.ev-opt.ok .ev-num{background:#4caf50;color:#fff}
+.ev-opt.ng .ev-num{background:#ef5350;color:#fff}
+/* 피드백 버블 */
+.fb-cosmo{display:flex;gap:8px;align-items:flex-start;border-radius:10px;
+  padding:10px;margin-top:8px;animation:fbIn .3s ease}
+@keyframes fbIn{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
+.fb-cosmo.ok{background:rgba(76,175,80,.12);border:1px solid rgba(76,175,80,.3)}
+.fb-cosmo.ng{background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.3)}
+.fb-cosmo.hint{background:rgba(100,140,255,.1);border:1px solid rgba(100,140,255,.3)}
+.fb-txt{font-size:12px;color:#e8eaf6;line-height:1.7}
+.fb-txt b{color:#ffd54f}
+/* 다음 케이스 버튼 */
+.next-case{background:linear-gradient(135deg,#ffd54f,#ff8f00);color:#0a0d1a;
+  border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:900;
+  font-family:'Jua',sans-serif;width:100%;cursor:pointer;margin-top:10px;
+  display:none;transition:all .2s}
+.next-case:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(255,143,0,.4)}
+
+/* ── 버튼 ── */
+.btn{padding:7px 12px;border:none;border-radius:9px;font-weight:700;
+  font-family:'Noto Sans KR',sans-serif;cursor:pointer;font-size:11px;
+  transition:all .18s;display:inline-flex;align-items:center;gap:4px}
+.btn-ghost{background:rgba(255,255,255,.06);color:#90caf9;
+  border:1px solid rgba(100,140,255,.25)}
+.btn-blue{background:rgba(41,121,255,.25);color:#90caf9;border:1px solid rgba(41,121,255,.4)}
+.btn-sm{padding:5px 9px;font-size:10px}
+
+/* ── 위도/경도 버튼 ── */
+.lon-btns{display:flex;gap:5px;justify-content:center;margin-top:7px;flex-wrap:wrap}
+.time-box{display:flex;gap:8px;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.04);border:1px solid rgba(100,140,255,.15);
+  border-radius:10px;padding:8px;margin-top:8px;flex-wrap:wrap}
+.tx{text-align:center}
+.tx .tl{font-size:9px;color:#37474f;margin-bottom:1px}
+.tx .tv{font-family:'Jua',sans-serif;font-size:20px;font-weight:900}
+
+/* ── 기후 ── */
+.cli-row{border-radius:9px;padding:7px 10px;cursor:pointer;transition:all .18s;
+  margin-bottom:4px;border:1px solid rgba(255,255,255,.06);
+  display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.03)}
+.cli-row:hover{border-color:rgba(255,213,79,.3);transform:translateX(2px)}
+.cli-row.on{border-color:rgba(255,213,79,.5);background:rgba(255,213,79,.06);transform:translateX(3px)}
+.cli-pop{display:none;border-radius:10px;overflow:hidden;margin-top:3px;
+  margin-bottom:4px;border:1px solid rgba(100,140,255,.2);background:#0a0d1a}
+.cli-pop.show{display:block}
+.lgrids{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}
+.li-card{border-radius:8px;overflow:hidden;border:1px solid rgba(100,140,255,.15);background:#111827}
+.li-card svg{display:block;width:100%}
+.li-info{padding:3px 5px}
+.li-info .lt{font-size:8px;font-weight:700;color:#7986cb}
+.li-info .ld{font-size:8px;color:#546e7a;line-height:1.3}
+
+/* ── 계절 ── */
+.sea-mini{flex:1;border-radius:10px;padding:9px;text-align:center;border:1px solid}
+
+/* ── 시차 검색 ── */
+.tz-panel{background:rgba(20,28,50,.9);border:1px solid rgba(100,140,255,.2);
+  border-radius:11px;padding:9px;margin-top:9px}
+
+/* ── 태양 ── */
+#sunCvs{display:block;width:100%;border-radius:9px;background:#04060f}
+
+/* ── AI 채팅 (플로팅) ── */
+.fab{position:fixed;bottom:14px;right:14px;z-index:300;
+  width:50px;height:50px;border-radius:50%;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#ffd54f,#ff8f00);color:#0a0d1a;
+  font-size:20px;box-shadow:0 4px 18px rgba(255,143,0,.5);
+  display:flex;align-items:center;justify-content:center;transition:all .2s}
+.fab:hover{transform:scale(1.08)}
+.fab .notif{position:absolute;top:-3px;right:-3px;width:14px;height:14px;
+  background:#e53935;border-radius:50%;border:2px solid #0f1117;
+  font-size:8px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+.chat-wrap{position:fixed;bottom:72px;right:12px;z-index:299;
+  width:min(355px,calc(100vw-24px));background:#0d1117;
+  border:1px solid rgba(100,140,255,.35);border-radius:18px;
+  box-shadow:0 8px 36px rgba(0,0,0,.8);display:none;flex-direction:column;
+  max-height:62vh}
+.chat-wrap.open{display:flex}
+.chat-top{background:linear-gradient(135deg,#0d47a1,#4527a0);border-radius:17px 17px 0 0;
+  padding:9px 13px;display:flex;align-items:center;justify-content:space-between}
+.chat-top-t{font-family:'Jua',sans-serif;font-size:12px;color:#fff;
+  display:flex;align-items:center;gap:5px}
+.chat-x{background:none;border:none;color:rgba(255,255,255,.6);font-size:16px;cursor:pointer}
+.chat-msgs{flex:1;overflow-y:auto;padding:9px;display:flex;flex-direction:column;gap:7px;min-height:0}
+.chat-msgs::-webkit-scrollbar{width:2px}
+.chat-msgs::-webkit-scrollbar-thumb{background:#1e2a4a;border-radius:2px}
+.cm-bot{align-self:flex-start;max-width:86%;background:rgba(100,140,255,.12);
+  border:1px solid rgba(100,140,255,.2);border-radius:3px 12px 12px 12px;
+  padding:7px 10px;font-size:12px;color:#e8eaf6;line-height:1.65}
+.cm-bot b{color:#ffd54f}
+.cm-user{align-self:flex-end;max-width:86%;background:rgba(41,121,255,.2);
+  border-radius:12px 3px 12px 12px;padding:7px 10px;font-size:12px;color:#fff;line-height:1.55}
+.typing{align-self:flex-start;background:rgba(100,140,255,.1);
+  border-radius:3px 12px 12px 12px;padding:7px 12px}
+.dots span{display:inline-block;width:5px;height:5px;border-radius:50%;
+  background:#7986cb;margin:0 1.5px;animation:db 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes db{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+.chat-inp{padding:7px;border-top:1px solid rgba(100,140,255,.12);
+  display:flex;gap:5px;align-items:flex-end}
+.chat-inp textarea{flex:1;background:rgba(255,255,255,.06);
+  border:1px solid rgba(100,140,255,.2);border-radius:9px;padding:6px 9px;
+  color:#e8eaf6;font-size:11px;font-family:'Noto Sans KR',sans-serif;
+  resize:none;min-height:34px;max-height:75px;line-height:1.5}
+.chat-inp textarea::placeholder{color:#37474f}
+.chat-send{background:linear-gradient(135deg,#ffd54f,#ff8f00);color:#0a0d1a;
+  border:none;border-radius:8px;padding:7px 10px;font-size:11px;
+  font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer}
+
+/* ── 모달 ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;
+  display:none;align-items:center;justify-content:center;padding:16px}
+.modal-bg.show{display:flex}
+.modal-box{background:#0d1117;border:1px solid rgba(100,140,255,.35);border-radius:17px;
+  overflow:hidden;width:100%;max-width:380px;position:relative}
+.modal-box img{width:100%;height:150px;object-fit:cover;display:block}
+.modal-body{padding:12px}
+.modal-x{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.5);color:#fff;
+  border:none;border-radius:50%;width:26px;height:26px;font-size:14px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5}
+
+/* ── 두 컬럼 ── */
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.col{flex:1 1 245px;min-width:0}
+
+/* ── 점수 화면 ── */
+.score-screen{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:28px 20px;text-align:center}
+
+.sec::-webkit-scrollbar{width:3px}
+.sec::-webkit-scrollbar-thumb{background:rgba(100,140,255,.2);border-radius:3px}
+@media(max-width:480px){.tx .tv{font-size:16px}.inner{padding:10px 10px 90px}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- HUD -->
+<div class="hud">
+  <div class="hud-left">
+    <div class="hud-title">🕵️ 기후 탐정단</div>
+    <div class="hud-sub">코스모 데이터 절도 — 범인 도시를 찾아라!</div>
+  </div>
+  <div class="hud-right">
+    <div class="case-prog">
+      <div class="cp active" id="cp0">1</div>
+      <div class="cp" id="cp1">2</div>
+      <div class="cp" id="cp2">3</div>
+      <div class="cp" id="cp3">4</div>
+    </div>
+    <div class="pts-bar">⭐<span class="pts-val" id="ptsVal">0</span></div>
+  </div>
+</div>
+
+<!-- 케이스 탭 -->
+<div class="casebar">
+  <button class="casetab unlocked active" id="tab0" onclick="goCase(0)">📁 사건1: 위도·기후 수사</button>
+  <button class="casetab" id="tab1" onclick="goCase(1)">🔒 사건2: 경도·시차 수사</button>
+  <button class="casetab" id="tab2" onclick="goCase(2)">🔒 사건3: 계절·반구 수사</button>
+  <button class="casetab" id="tab3" onclick="goCase(3)">🔒 최종: 범인 도시 지목!</button>
+</div>
+
+<!-- ══ 사건 1: 위도와 기후 ══ -->
+<div id="sec-0" class="sec on"><div class="inner">
+
+  <div class="case-file">
+    <div class="case-num">🗂️ CASE FILE #001 — 위도·기후 수사</div>
+    <div class="case-title">코스모의 70년치 기후 데이터가 사라졌다! 용의자는 5개 도시!</div>
+    <div class="case-desc">어느 날 갑자기 코스모의 기후 데이터베이스가 삭제됐다 😱<br>
+      용의자: <b style="color:#ffd54f">나이로비·런던·서울·시드니·모스크바</b> — 각 도시는 자기 기후 데이터만 남기려 했다!<br>
+      위도와 기후의 관계를 파악해서 <b style="color:#ffd54f">단서 #1</b>을 확보하라!</div>
+    <div class="case-clue">
+      🔍 <b>수사①:</b> 지구본 상하·좌우 드래그 → 위도별 햇빛 각도 확인!<br>
+      🔍 <b>수사②:</b> 기후 이름 클릭 → 5개 용의자 도시 기후·의식주 조사!<br>
+      🔍 증거 3개 제출 → <b style="color:#ffd54f">단서 #1(범인 기후대) 해금!</b>
+    </div>
+  </div>
+
+  <div class="cosmo-row">
+    <div class="cosmo-av">🤖<div class="cosmo-dot"></div></div>
+    <div class="cosmo-bubble">
+      탐정님! 🕵️ AI 파트너 <b>코스모</b>예요. 데이터를 되찾아주세요!<br>
+      용의자 도시 힌트: <b>나이로비(열대·UTC+3), 런던(온대·UTC+0), 서울(온대·UTC+9), 시드니(온대·UTC+10), 모스크바(냉대·UTC+3)</b><br>
+      지구본을 드래그해서 각 도시의 기후 위도를 확인해봐요! 👆
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col" style="flex:1 1 265px">
+      <div class="clue-card highlight" style="padding:9px">
+        <div class="ctitle">🔍 단서 수집 — 드래그하면 햇빛이 변해!</div>
+        <!-- 태양 애니 -->
+        <div style="margin-bottom:7px;position:relative;border-radius:9px;overflow:hidden">
+          <canvas id="sunCvs" height="80"></canvas>
+          <div style="position:absolute;bottom:5px;right:7px;display:flex;gap:5px">
+            <span id="sunWord" style="font-size:9px;color:#ffd54f;font-weight:700;background:rgba(0,0,0,.6);padding:2px 5px;border-radius:7px">수직 집중</span>
+            <span id="sunAng" style="font-size:12px;color:#ef5350;font-weight:900;font-family:'Jua',sans-serif;background:rgba(0,0,0,.6);padding:2px 5px;border-radius:7px">90°</span>
+          </div>
+        </div>
+        <!-- 지구본 -->
+        <div class="globe-w draggable" id="latOuter"><svg id="svgLat" viewBox="0 0 460 460"></svg></div>
+        <!-- 상태 -->
+        <div id="latStat" style="background:rgba(183,28,28,.12);border:1px solid rgba(183,28,28,.25);border-radius:9px;padding:7px;margin-top:7px;display:flex;align-items:center;gap:8px">
+          <span id="latEm" style="font-size:22px">🌴</span>
+          <div style="flex:1">
+            <div id="latLbl" style="font-weight:700;font-size:12px;color:#ef9a9a">열대우림 기후</div>
+            <div id="latDsc" style="font-size:9px;color:#546e7a;margin-top:1px">적도 근처 — 항상 뜨거워요!</div>
+          </div>
+          <div id="latDeg" style="font-family:'Jua',sans-serif;font-size:15px;color:#5c8cff;flex-shrink:0">0°N</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:7px">
+          <span style="background:rgba(183,28,28,.3);color:#ef9a9a;padding:2px 7px;border-radius:18px;font-size:9px;font-weight:700;border:1px solid rgba(183,28,28,.4)">🌴 열대</span>
+          <span style="background:rgba(230,81,0,.3);color:#ffcc80;padding:2px 7px;border-radius:18px;font-size:9px;font-weight:700;border:1px solid rgba(230,81,0,.4)">🏜️ 건조</span>
+          <span style="background:rgba(46,125,50,.3);color:#a5d6a7;padding:2px 7px;border-radius:18px;font-size:9px;font-weight:700;border:1px solid rgba(46,125,50,.4)">🌸 온대</span>
+          <span style="background:rgba(21,101,192,.3);color:#90caf9;padding:2px 7px;border-radius:18px;font-size:9px;font-weight:700;border:1px solid rgba(21,101,192,.4)">🌲 냉대</span>
+          <span style="background:rgba(69,39,160,.3);color:#ce93d8;padding:2px 7px;border-radius:18px;font-size:9px;font-weight:700;border:1px solid rgba(69,39,160,.4)">🧊 한대</span>
+        </div>
+        <!-- 전체 색상 초기화 버튼 -->
+        <div style="text-align:center;margin-top:7px">
+          <button onclick="clearCliSel()"
+            style="background:rgba(255,213,79,.12);color:#ffd54f;border:1px solid rgba(255,213,79,.35);
+            border-radius:18px;padding:4px 14px;font-size:10px;font-weight:700;
+            font-family:'Noto Sans KR',sans-serif;cursor:pointer">
+            🌍 전체 색상 보기
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="flex:1 1 210px">
+      <div class="clue-card" style="padding:9px">
+        <div class="ctitle">🔍 기후별 생활 단서 수집!</div>
+        <div id="cliList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 증거 제출 -->
+  <div class="evidence-box" id="ev0">
+    <div class="ev-title">🔎 증거 제출 <span style="font-size:10px;color:#546e7a;font-weight:400">(3문제 통과 → 사건 2 해금)</span></div>
+    <div id="ev0-body"></div>
+  </div>
+  <button class="next-case" id="nc0" onclick="unlockCase(1)">🗝️ 단서 #1 획득! → 사건2 경도·시차 수사</button>
+</div></div>
+
+<!-- ══ 사건 2: 경도와 시차 ══ -->
+<div id="sec-1" class="sec"><div class="inner">
+
+  <div class="case-file">
+    <div class="case-num">🗂️ CASE FILE #002 — 경도·시차 수사</div>
+    <div class="case-title">범인 도시의 암호: "런던이 자정일 때 나는 오전 9시였다"</div>
+    <div class="case-desc">보안 로그에 이상한 접속 기록! 접속 시각: 런던 기준 <b style="color:#ffd54f">00:00(자정)</b>, 범인 현지: <b style="color:#ffd54f">09:00(오전 9시)</b><br>
+      시차를 계산하면 범인 도시의 <b>UTC 시간대</b>가 특정된다!</div>
+    <div class="case-clue">
+      🔍 <b>수사③:</b> 지구본·시차 계산기로 5개 도시 UTC 조사!<br>
+      🔍 <b>힌트:</b> 9시 − 0시 = <b style="color:#ffd54f">+9시간 → UTC+9</b> → 단서 #2 확보!
+    </div>
+  </div>
+
+  <div class="cosmo-row">
+    <div class="cosmo-av">🤖<div class="cosmo-dot"></div></div>
+    <div class="cosmo-bubble">
+      단서 #1 확보! 🎉 이제 경도 수사예요!<br>
+      <b>15° = 1시간</b>이 핵심! 5개 도시 UTC: 나이로비+3, 런던+0, <b style="color:#ffd54f">서울·도쿄+9</b>, 시드니+10, 모스크바+3<br>
+      🏛️ 런던 핀 클릭 → 그리니치 천문대 확인!
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col" style="flex:1 1 265px">
+      <div class="clue-card highlight" style="padding:9px">
+        <div class="ctitle">🔍 지구본 돌리기 — 빨간선 찾아봐!</div>
+        <div class="pin-ov">
+          <div class="globe-w draggable" id="lonOuter" style="cursor:grab;touch-action:none">
+            <svg id="svgLon" viewBox="0 0 460 460"></svg>
+          </div>
+          <div class="city-pin" id="londonPin">
+            <div class="pl" style="background:#e53935;cursor:pointer" onclick="document.getElementById('gmModal').classList.add('show')">🏛️ 런던 0°</div>
+            <div class="pd" style="background:#e53935"></div>
+          </div>
+          <div class="city-pin" id="seoulPin">
+            <div class="pl" style="background:#e91e8c">🇰🇷 서울 +9h</div>
+            <div class="pd" style="background:#e91e8c"></div>
+          </div>
+        </div>
+        <div class="lon-btns">
+          <button class="btn btn-ghost btn-sm" onclick="moveLon(-45)">◀◀-45°</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveLon(-15)">◀-15°</button>
+          <button class="btn btn-blue btn-sm" onclick="moveLon(0,true)">0°리셋</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveLon(15)">+15°▶</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveLon(45)">+45°▶▶</button>
+        </div>
+        <div style="text-align:center;margin-top:6px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('gmModal').classList.add('show')">🏛️ 그리니치 천문대 확인</button>
+        </div>
+        <div class="time-box">
+          <div class="tx"><div class="tl">🇬🇧 런던 (정오)</div><div class="tv" style="color:#ff8a65">12:00</div></div>
+          <div style="color:#546e7a;font-size:16px">→</div>
+          <div class="tx"><div class="tl">📍 현재 위치</div><div id="lonTime" class="tv" style="color:#5c8cff">21:00</div></div>
+          <div class="tx"><div class="tl">시차</div><div id="lonDiff" class="tv" style="color:#ffd54f;font-size:17px">+9h</div></div>
+        </div>
+        <div id="lonNote" style="text-align:center;background:rgba(255,255,255,.04);border-radius:7px;padding:5px;font-size:10px;color:#7986cb;margin-top:5px"></div>
+      </div>
+    </div>
+    <div class="col" style="flex:1 1 200px">
+      <div class="clue-card" style="padding:9px">
+        <div class="ctitle">🌍 세계 도시 현재 시각</div>
+        <div id="cityList"></div>
+      </div>
+      <div class="tz-panel">
+        <div style="font-family:'Jua',sans-serif;color:#ffd54f;font-size:12px;margin-bottom:6px">🔍 서울 기준 시차 계산기</div>
+        <select id="tzSel" onchange="calcTZ()" style="width:100%;padding:6px 8px;border:1px solid rgba(100,140,255,.25);border-radius:7px;font-size:11px;font-family:'Noto Sans KR',sans-serif;color:#e8eaf6;background:#111827;margin-bottom:7px">
+          <option value="">-- 도시 선택 --</option>
+        </select>
+        <div id="tzResult" style="display:none;background:rgba(255,255,255,.04);border-radius:8px;padding:8px;text-align:center">
+          <div id="tzCity" style="font-size:10px;color:#7986cb;margin-bottom:3px"></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
+            <div><div style="font-size:9px;color:#37474f">🇰🇷 서울</div>
+              <div style="font-family:'Jua',sans-serif;font-size:20px;color:#e91e8c">12:00</div></div>
+            <div style="font-size:14px;color:#37474f">→</div>
+            <div><div id="tzDN" style="font-size:9px;color:#37474f">목적지</div>
+              <div id="tzDT" style="font-family:'Jua',sans-serif;font-size:20px;color:#5c8cff">?</div></div>
+          </div>
+          <div id="tzDiff" style="margin-top:4px;font-size:11px;font-weight:700"></div>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center;margin-top:6px;border-top:1px solid rgba(100,140,255,.1);padding-top:6px">
+          <span style="font-size:10px;color:#546e7a;flex-shrink:0">UTC</span>
+          <input type="number" id="tzInput" min="-12" max="14" placeholder="직접 입력"
+            style="flex:1;padding:5px 7px;border:1px solid rgba(100,140,255,.2);border-radius:6px;font-size:11px;color:#e8eaf6;background:rgba(255,255,255,.05)">
+          <button class="btn btn-blue btn-sm" onclick="calcTZM()">계산!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="evidence-box" id="ev1">
+    <div class="ev-title">🔎 증거 제출</div>
+    <div id="ev1-body"></div>
+  </div>
+  <button class="next-case" id="nc1" onclick="unlockCase(2)">🗝️ 단서 #2 획득! → 사건3 계절 수사</button>
+</div></div>
+
+<!-- ══ 사건 3: 계절과 공전 ══ -->
+<div id="sec-2" class="sec"><div class="inner">
+
+  <div class="case-file">
+    <div class="case-num">🗂️ CASE FILE #003 — 계절·반구 수사</div>
+    <div class="case-title">범인의 마지막 메모: "내가 있는 곳 1월은 겨울이다"</div>
+    <div class="case-desc">단서 #1(온대기후) + 단서 #2(UTC+9)까지 확보! 마지막 단서만 남았다.<br>
+      1월=겨울이면 <b style="color:#ffd54f">북반구</b>, 1월=여름이면 <b style="color:#ffd54f">남반구</b>!<br>
+      3개 단서 조합 → 범인 도시 특정!</div>
+    <div class="case-clue">
+      🔍 <b>수사④:</b> 슬라이더 1월 선택 → 북반구·남반구 계절 비교!<br>
+      🔍 <b>최종 추리:</b> 온대+UTC+9+<b style="color:#ffd54f">1월=겨울(북반구)</b> → 범인 도시는?
+    </div>
+  </div>
+
+  <div class="cosmo-row">
+    <div class="cosmo-av">🤖<div class="cosmo-dot"></div></div>
+    <div class="cosmo-bubble">
+      단서 #2 확보! 거의 다 왔어요! 🔍<br>
+      <b>1월=겨울</b>이면 북반구, <b>1월=여름</b>이면 남반구예요.<br>
+      온대+UTC+9 도시 중 1월=겨울인 곳은? → 범인이 바로 거기예요! 🎯
+    </div>
+  </div>
+
+  <div class="clue-card highlight" style="padding:9px">
+    <div class="ctitle">🔍 지구 공전 시뮬레이터</div>
+    <div id="seaWrap" style="width:100%;border-radius:9px;overflow:hidden">
+      <canvas id="seaCvs" style="display:block;width:100%;border-radius:9px"></canvas>
+    </div>
+    <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+      <span style="color:#7986cb;font-weight:700;font-size:12px">월 선택</span>
+      <span id="seaMonV" style="color:#ff5722;font-weight:900;font-size:19px;font-family:'Jua',sans-serif">7월</span>
+    </div>
+    <input type="range" min="1" max="12" value="7" id="seaMon" oninput="doSea(+this.value)" style="width:100%;accent-color:#ff5722">
+    <div style="display:flex;justify-content:space-between;color:#37474f;font-size:10px;margin-top:3px">
+      <span>1월</span><span>4월</span><span>7월</span><span>10월</span><span>12월</span>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:9px">
+    <div class="col"><div style="display:flex;gap:7px" id="seaPair"></div></div>
+    <div class="col">
+      <div style="background:rgba(42,26,74,.6);border:1px solid rgba(155,100,255,.25);border-radius:11px;padding:10px">
+        <div style="font-family:'Jua',sans-serif;color:#ce93d8;font-size:12px;margin-bottom:6px">🔑 핵심 단서</div>
+        <div id="seaTips"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="evidence-box" id="ev2" style="margin-top:10px">
+    <div class="ev-title">🔎 증거 제출</div>
+    <div id="ev2-body"></div>
+  </div>
+  <button class="next-case" id="nc2" onclick="unlockCase(3)">🗝️ 단서 #3 획득! → 드디어 범인 도시를 지목하러!</button>
+</div></div>
+
+<!-- ══ 최종: 범인 도시 지목 ══ -->
+<div id="sec-3" class="sec"><div class="inner">
+
+  <div class="case-file">
+    <div class="case-num">🏛️ FINAL — 범인 도시를 지목하라!</div>
+    <div class="case-title">단서 3개를 조합해 코스모의 데이터를 훔친 도시를 밝혀라!</div>
+    <div class="case-desc">드디어 결정적인 순간! <b style="color:#ffd54f">온대기후 + UTC+9 + 1월=겨울(북반구)</b><br>
+      이 3가지 조건에 해당하는 용의자 도시를 지목하라!</div>
+  </div>
+
+  <!-- 단서 3개 조합 -->
+  <div style="background:rgba(10,13,26,.9);border:2px solid rgba(255,213,79,.25);border-radius:13px;padding:12px;margin-bottom:12px">
+    <div style="font-family:'Jua',sans-serif;font-size:13px;color:#ffd54f;margin-bottom:9px">🗝️ 수집된 단서 3개 — 범인의 프로필</div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:11px">
+      <div style="background:rgba(255,213,79,.07);border:1px solid rgba(255,213,79,.2);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">📍</span>
+        <div><div style="font-size:9px;color:#546e7a;margin-bottom:1px">단서 #1 — 위도·기후</div>
+          <div id="clue-show-0" style="font-family:'Jua',sans-serif;font-size:13px;color:#ffd54f">온대 기후 (위도 35~50°N)</div></div>
+      </div>
+      <div style="background:rgba(255,213,79,.07);border:1px solid rgba(255,213,79,.2);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">⏰</span>
+        <div><div style="font-size:9px;color:#546e7a;margin-bottom:1px">단서 #2 — 경도·시간대</div>
+          <div id="clue-show-1" style="font-family:'Jua',sans-serif;font-size:13px;color:#ffd54f">UTC+9 (동경 약 135°)</div></div>
+      </div>
+      <div style="background:rgba(255,213,79,.07);border:1px solid rgba(255,213,79,.2);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">🌡️</span>
+        <div><div style="font-size:9px;color:#546e7a;margin-bottom:1px">단서 #3 — 계절·반구</div>
+          <div id="clue-show-2" style="font-family:'Jua',sans-serif;font-size:13px;color:#ffd54f">1월 = 겨울 (북반구)</div></div>
+      </div>
+    </div>
+    <div style="background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.18);border-radius:8px;padding:9px 12px">
+      <div style="font-size:10px;color:#ef5350;font-weight:700;margin-bottom:3px">🔎 탐정 추리</div>
+      <div style="font-size:12px;color:#90caf9;line-height:1.75">
+        온대(35~50°N) + UTC+9(동경135°) + 1월=겨울(북반구)<br>
+        → <b style="color:#ffd54f">위도 37°N, 동경 127°</b> 부근의 도시! 용의자 중 누구일까?
+      </div>
+    </div>
+  </div>
+
+  <!-- 용의자 5개 도시 카드 -->
+  <div style="font-family:'Jua',sans-serif;font-size:13px;color:#ffd54f;margin-bottom:8px;text-align:center">
+    🌍 용의자 5개 도시 — 카드 눌러서 프로필 확인 후 범인 지목!
+  </div>
+  <div id="suspectGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:11px"></div>
+
+  <!-- 지목 버튼 -->
+  <div id="verdictArea" style="display:none">
+    <div id="selectedName" style="text-align:center;margin:8px 0;font-size:12px;color:#90caf9;font-weight:700"></div>
+    <button class="next-case" style="display:block" onclick="submitVerdict()">🔨 이 도시를 범인으로 지목한다!</button>
+  </div>
+
+  <!-- 판결 결과 -->
+  <div id="verdictResult" style="display:none">
+    <div id="verdictBox" style="border:2px solid rgba(255,213,79,.4);border-radius:14px;padding:14px;text-align:center;margin-bottom:12px;background:linear-gradient(135deg,rgba(255,213,79,.06),rgba(255,100,0,.04))"></div>
+    <div id="fqSection" style="display:none">
+      <div style="font-family:'Jua',sans-serif;font-size:13px;color:#90caf9;margin-bottom:9px;text-align:center">
+        🏆 최종 심문 8문제 → <span style="color:#ffd54f">수석 탐정</span> 달성!
+      </div>
+      <div id="fqBody" style="max-width:540px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
+      <div style="font-family:'Jua',sans-serif;font-size:16px;color:#ffd54f">🔎 최종 심문</div>
+      <span id="fqProg" style="background:rgba(255,213,79,.1);color:#ffd54f;padding:2px 10px;border-radius:18px;font-weight:700;font-size:11px;border:1px solid rgba(255,213,79,.25)">1/8</span>
+    </div>
+    <div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;margin-bottom:12px;overflow:hidden">
+      <div id="fqBar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#ffd54f,#ff8f00);transition:width .4s;width:12.5%"></div>
+    </div>
+    <div class="evidence-box"><p id="fqText" style="color:#fff9c4;font-size:14px;font-weight:700;line-height:1.6;margin:0;font-family:'Jua',sans-serif"></p></div>
+    <div id="fqChoices"></div>
+    <div id="fqFb" style="display:none"></div>
+    <button id="fqNext" class="next-case" onclick="nextFQ()">다음 증거 →</button>
+  </div>
+
+  <div id="fqEnd" style="display:none">
+    <div class="score-screen">
+      <div id="fqEm" style="font-size:68px;margin-bottom:12px"></div>
+      <div id="fqRank" style="font-family:'Jua',sans-serif;font-size:22px;color:#ffd54f;margin-bottom:6px"></div>
+      <div id="fqScore" style="font-family:'Jua',sans-serif;font-size:44px;font-weight:900;margin:6px 0"></div>
+      <div id="fqMsg" style="color:#546e7a;font-size:13px;margin-bottom:12px;line-height:1.65"></div>
+      <div id="fqBadges" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:16px"></div>
+      <div style="font-family:'Jua',sans-serif;color:#ffd54f;font-size:18px;margin-bottom:5px">총 획득 포인트</div>
+      <div id="fqPts" style="font-family:'Jua',sans-serif;font-size:34px;color:#ff8f00;margin-bottom:18px"></div>
+      <button class="btn" style="background:linear-gradient(135deg,#ffd54f,#ff8f00);color:#0a0d1a;padding:12px 24px;font-size:14px;font-weight:900" onclick="resetFQ()">🔄 다시 도전!</button>
+    </div>
+        </div><!-- fqBody -->
+    </div><!-- fqSection -->
+  </div><!-- verdictResult -->
+</div></div>
+
+</div><!-- #app -->
+
+<!-- FAB -->
+<button class="fab" onclick="toggleChat()" id="chatFab">🤖<div class="notif" id="chatNotif" style="display:none">!</div></button>
+
+<!-- 채팅 -->
+<div class="chat-wrap" id="chatWrap">
+  <div class="chat-top">
+    <div class="chat-top-t">🤖 코스모 AI <span style="font-size:9px;opacity:.6;margin-left:4px">· 무엇이든 물어봐!</span></div>
+    <button class="chat-x" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs"></div>
+  <div class="chat-inp">
+    <textarea id="chatTxt" placeholder="예: 왜 극지방은 추워요? 한대기후 주거 방식은?" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
+    <button class="chat-send" onclick="sendChat()">전송</button>
+  </div>
+</div>
+
+<!-- 그리니치 모달 -->
+<div class="modal-bg" id="gmModal">
+  <div class="modal-box">
+    <button class="modal-x" onclick="document.getElementById('gmModal').classList.remove('show')">×</button>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/2007_09_07_-_Greenwich_-_Royal_Observatory-1.jpg/640px-2007_09_07_-_Greenwich_-_Royal_Observatory-1.jpg" alt="그리니치" onerror="this.style.display='none'"/>
+    <div class="modal-body">
+      <div style="font-family:'Jua',sans-serif;font-size:14px;color:#ffd54f;margin-bottom:5px">🏛️ 영국 그리니치 천문대</div>
+      <p style="font-size:11px;color:#90caf9;line-height:1.7">경도 <strong>0°(본초자오선)</strong>이 지나는 곳! 1884년 국제 표준으로 정해졌어요. 바닥의 선에 두 발을 걸치고 사진 찍는 명소 🇬🇧</p>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════
+   게임 상태
+══════════════════════════════════ */
+let pts=0, unlocked=0, curCase=0;
+const wCnt=[0,0,0]; // 오답 횟수
+
+/* ══════════════════════════════════
+   단서 수집 시스템
+══════════════════════════════════ */
+const CLUE_TEXT=['온대 기후 (위도 35~50°N)','UTC+9 (동경 약 135°)','1월 = 겨울 (북반구)'];
+const clueGot=[false,false,false];
+
+function gainClue(i){
+  if(clueGot[i]) return;
+  clueGot[i]=true;
+  // HUD cp 아이콘 업데이트
+  const cp=document.getElementById('cp'+i);
+  if(cp){ cp.classList.remove('active'); cp.classList.add('done'); cp.textContent='🗝'; }
+  addBot(['🗝️ 단서 #1 확보! "온대기후(35~50°N)" — 나이로비·모스크바는 탈락! 이제 시차를 추적해요.',
+          '🗝️ 단서 #2 확보! "UTC+9" — 런던·나이로비·모스크바 탈락! 서울·도쿄만 남았어요.',
+          '🗝️ 단서 #3 확보! "1월=겨울(북반구)" — 시드니(남반구)도 탈락! 🏆 범인 도시가 특정됐어요!'][i]);
+  showNotif();
+  if(clueGot.every(Boolean)) setTimeout(buildSuspects, 500);
+}
+
+/* ══════════════════════════════════
+   용의자 도시 데이터
+══════════════════════════════════ */
+const SUSPECTS=[
+  { name:'나이로비 🇰🇪', em:'🌴',
+    lat:'남위 1° (적도 — 열대기후)', utc:'UTC+3',
+    jan:'연중 고온 (1월도 덥다)', jul:'연중 고온',
+    climate:'🌴 열대기후', col:'#ef9a9a',
+    criminal:false, why:'열대기후라 단서#1(온대) 불일치. UTC+3으로 단서#2(UTC+9) 불일치' },
+  { name:'런던 🇬🇧', em:'🏛️',
+    lat:'북위 51° (온대기후)', utc:'UTC+0',
+    jan:'겨울', jul:'북반구 여름',
+    climate:'🌸 온대기후', col:'#a5d6a7',
+    criminal:false, why:'온대·1월겨울은 맞지만 UTC+0으로 단서#2(UTC+9) 불일치' },
+  { name:'서울 🇰🇷', em:'🌸',
+    lat:'북위 37° (온대기후)', utc:'UTC+9',
+    jan:'겨울 ❄️', jul:'북반구 여름 ☀️',
+    climate:'🌸 온대기후', col:'#ffd54f',
+    criminal:true,  why:'온대(37°N)✅ + UTC+9✅ + 1월=겨울(북반구)✅ → 완벽 일치!' },
+  { name:'시드니 🇦🇺', em:'🏖️',
+    lat:'남위 34° (온대기후)', utc:'UTC+10',
+    jan:'여름 ☀️ (남반구)', jul:'남반구 겨울 ❄️',
+    climate:'🌸 온대기후(남반구)', col:'#80cbc4',
+    criminal:false, why:'1월=여름(남반구)이라 단서#3 불일치. UTC+10으로 단서#2도 불일치' },
+  { name:'모스크바 🇷🇺', em:'❄️',
+    lat:'북위 56° (냉대기후)', utc:'UTC+3',
+    jan:'겨울 ❄️', jul:'북반구 여름',
+    climate:'🌲 냉대기후', col:'#90caf9',
+    criminal:false, why:'냉대기후라 단서#1(온대) 불일치. UTC+3으로 단서#2(UTC+9) 불일치' }
+];
+const CRIMINAL_IDX = 2; // 서울
+let selectedIdx = -1;
+
+function buildSuspects(){
+  const grid = document.getElementById('suspectGrid');
+  if(!grid) return;
+  grid.innerHTML='';
+  SUSPECTS.forEach((s,i)=>{
+    const d = document.createElement('div');
+    d.id = 'sus'+i;
+    d.style.cssText = `background:rgba(20,28,50,.85);border:1.5px solid rgba(100,140,255,.22);
+      border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;
+      transition:all .22s;position:relative;user-select:none`;
+    // 프로필 툴팁 (hover on desktop, tap on mobile)
+    d.innerHTML = `
+      <div class="sus-tip" style="display:none;position:absolute;bottom:calc(100%+6px);left:50%;
+        transform:translateX(-50%);background:#111827;border:1px solid rgba(255,213,79,.35);
+        border-radius:9px;padding:8px 11px;font-size:10px;color:#90caf9;white-space:nowrap;
+        z-index:30;text-align:left;box-shadow:0 4px 20px rgba(0,0,0,.7)">
+        📍 ${s.lat}<br>⏰ ${s.utc}<br>❄️ 1월: ${s.jan}<br>☀️ 7월: ${s.jul}<br>🌡️ ${s.climate}
+      </div>
+      <div style="font-size:28px;margin-bottom:4px">${s.em}</div>
+      <div style="font-family:'Jua',sans-serif;font-size:11px;color:#ffd54f;margin-bottom:3px">${s.name}</div>
+      <div style="font-size:9px;color:#546e7a;line-height:1.45">${s.climate}<br>${s.utc}</div>
+      <div style="font-size:8px;color:#37474f;margin-top:4px">👆 눌러서 프로필 확인</div>`;
+    let tipOpen = false;
+    d.addEventListener('click', ()=>{
+      // 다른 카드 팁 닫기
+      document.querySelectorAll('.sus-tip').forEach(t=>{ t.style.display='none'; });
+      document.querySelectorAll('[id^="sus"]').forEach(c=>{ c.style.borderColor='rgba(100,140,255,.22)'; c.style.transform='none'; });
+      tipOpen = !tipOpen;
+      d.querySelector('.sus-tip').style.display = tipOpen ? 'block' : 'none';
+      // 선택 표시
+      d.style.borderColor = '#ffd54f';
+      d.style.transform = 'translateY(-3px)';
+      selectedIdx = i;
+      const sn = document.getElementById('selectedName');
+      if(sn) sn.textContent = `선택: ${s.name} (${s.climate} · ${s.utc}) — 이 도시가 범인입니까?`;
+      const va = document.getElementById('verdictArea');
+      if(va) va.style.display = 'block';
+    });
+    grid.appendChild(d);
+  });
+}
+
+function submitVerdict(){
+  if(selectedIdx < 0) return;
+  const s = SUSPECTS[selectedIdx];
+  const correct = (selectedIdx === CRIMINAL_IDX);
+  // 카드 스타일 정리
+  document.querySelectorAll('[id^="sus"]').forEach((c,i)=>{
+    if(i===CRIMINAL_IDX){
+      c.style.borderColor='#4caf50'; c.style.background='rgba(76,175,80,.15)';
+    } else {
+      c.style.opacity='.4'; c.style.borderColor='rgba(255,80,80,.2)';
+    }
+  });
+  const vr = document.getElementById('verdictResult');
+  const vb = document.getElementById('verdictBox');
+  if(vr) vr.style.display = 'block';
+  if(correct){
+    vb.innerHTML = `
+      <div style="font-family:'Jua',sans-serif;font-size:18px;color:#ffd54f;margin-bottom:8px">🎉 정답! 범인은 🌸 서울(대한민국)이었다!</div>
+      <div style="font-size:32px;margin:6px 0">🏆</div>
+      <div style="font-size:12px;color:#90caf9;line-height:1.9">
+        📍 온대기후(위도 37°N) ✅<br>
+        ⏰ UTC+9 (동경 127°) ✅<br>
+        🌡️ 1월=겨울 (북반구) ✅<br>
+        <b style="color:#ffd54f">→ 세 단서 모두 일치! 코스모의 데이터를 되찾았어요! 🎊</b>
+      </div>`;
+    addPts(50);
+    addBot('탐정님이 해냈어요! 🎉 서울이 범인이었어요!\n온대기후 + UTC+9 + 북반구 → 완벽 일치!\n이제 최종 심문 8문제로 수석 탐정 인증을 받아봐요! 🏆');
+    const fqs = document.getElementById('fqSection');
+    if(fqs) fqs.style.display = 'block';
+  } else {
+    vb.innerHTML = `
+      <div style="font-family:'Jua',sans-serif;font-size:15px;color:#ef5350;margin-bottom:7px">❌ 아쉬워요! ${s.name}은(는) 범인이 아니에요.</div>
+      <div style="font-size:12px;color:#90caf9;line-height:1.75">이유: ${s.why}<br>단서를 다시 확인해봐요!</div>
+      <button onclick="retryVerdict()" style="margin-top:9px;background:rgba(255,255,255,.07);color:#90caf9;
+        border:1px solid rgba(100,140,255,.3);border-radius:8px;padding:7px 16px;font-size:11px;
+        font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;width:100%">↩️ 다시 추리하기</button>`;
+    addBot(`아쉬워요! ${s.name}은 범인이 아니에요.\n이유: ${s.why}\n단서를 다시 봐요!`);
+  }
+  showNotif();
+}
+
+function retryVerdict(){
+  selectedIdx = -1;
+  document.querySelectorAll('[id^="sus"]').forEach(c=>{
+    c.style.opacity='1'; c.style.borderColor='rgba(100,140,255,.22)';
+    c.style.background=''; c.style.transform='none';
+    c.querySelector('.sus-tip').style.display='none';
+  });
+  document.getElementById('verdictArea').style.display='none';
+  document.getElementById('verdictResult').style.display='none';
+}
+
+function addPts(n){
+  pts+=n; document.getElementById('ptsVal').textContent=pts;
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;top:45%;left:50%;transform:translate(-50%,-50%);font-family:Jua,sans-serif;font-size:30px;color:#ffd54f;z-index:999;pointer-events:none;animation:pf .8s forwards';
+  el.textContent='+'+n+'⭐';
+  if(!document.getElementById('pfStyle')){
+    const s=document.createElement('style');
+    s.id='pfStyle';
+    s.textContent='@keyframes pf{0%{opacity:1;transform:translate(-50%,-60%)}100%{opacity:0;transform:translate(-50%,-130%)}}';
+    document.head.appendChild(s);
+  }
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),900);
+}
+
+/* ══════════════════════════════════
+   케이스 이동
+══════════════════════════════════ */
+function goCase(n){
+  if(n>unlocked) return;
+  curCase=n;
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sec-'+n).classList.add('on');
+  document.querySelectorAll('.casetab').forEach((t,i)=>{
+    t.classList.remove('active');
+    if(i===n) t.classList.add('active');
+  });
+  if(n===2) setTimeout(()=>{initSea();doSea(+document.getElementById('seaMon').value);},80);
+  if(n===0) startSun(); else stopSun();
+}
+
+function unlockCase(n){
+  unlocked=Math.max(unlocked,n);
+  const tab=document.getElementById('tab'+n);
+  if(tab){
+    tab.classList.add('unlocked');
+    tab.innerHTML=tab.innerHTML.replace(/^🔒 /,'');
+    // 잠금 아이콘 제거
+    tab.innerHTML=tab.innerHTML.replace('<span class="lock-icon">🔒</span>','');
+  }
+  // 완료된 케이스 표시
+  for(let i=0;i<n;i++){
+    document.getElementById('cp'+i).classList.remove('active');
+    document.getElementById('cp'+i).classList.add('done');
+    document.getElementById('cp'+i).textContent='✓';
+    const t=document.getElementById('tab'+i);
+    if(t){t.classList.add('solved');}
+  }
+  document.getElementById('cp'+n).classList.remove('active');
+  document.getElementById('cp'+n).classList.add('active');
+  goCase(n);
+  setTimeout(()=>{
+    // 사건 완료 시 해당 단서 획득
+    if(n>=1 && n<=3) gainClue(n-1);
+    const msgs=['',
+      '🗝️ 단서 #1 획득! → 사건2 경도·시차 수사 시작!',
+      '🗝️ 단서 #2 획득! → 사건3 계절·반구 수사 시작!',
+      '🗝️ 단서 #3 획득! → 드디어 범인 도시를 지목하러!'];
+    if(msgs[n]) addBot(msgs[n]);
+    showNotif();
+  },400);
+}
+
+/* ══════════════════════════════════
+   증거 제출 (미션 퀴즈) 시스템
+══════════════════════════════════ */
+const CASES=[
+  // 사건 1 - 위도와 기후
+  [
+    {q:'적도(위도 0°) 근처가 1년 내내 더운 이유는?',
+     opts:['경도가 낮아서','햇빛이 수직으로 집중되어 에너지가 강해서','바다가 가까워서','지구 크기가 커서'],
+     a:1,
+     hints:['위도 0°는 태양과 가장 가깝기 때문일까요? 아니면 햇빛의 <b>각도</b> 때문일까요?','수직으로 들어온 햇빛 vs 비스듬히 들어온 햇빛 — 어느 쪽이 단위 면적에 더 집중될까요?'],
+     ok:'🎉 정확해요! 적도 근처는 햇빛이 거의 수직(90°)으로 내리쬐어 좁은 면적에 에너지가 집중돼요. 그래서 연중 뜨거워요!',
+     ng:'힌트: 태양과의 거리보다 <b>햇빛이 지면에 닿는 각도</b>가 더 중요해요! 수직일수록 집중, 비스듬할수록 분산돼요.'
+    },
+    {q:'이글루(이누이트 주거)가 눈으로 만들어진 이유는?',
+     opts:['눈이 예뻐서','나무가 없고 눈의 단열 효과 때문에','시원하려고','전통 때문에'],
+     a:1,
+     hints:['한대 기후(위도 66.5° 이상)에는 어떤 재료가 풍부할까요?','눈 블록 사이의 <b>공기층</b>이 무슨 역할을 할까요?'],
+     ok:'🏠 맞아요! 극지방엔 나무가 거의 없어요. 눈 블록 사이 공기층이 단열재 역할을 해 내부를 영상 온도로 유지할 수 있어요!',
+     ng:'힌트: 한대 기후엔 <b>나무가 없어요</b>. 그리고 눈은 단열 효과가 있어요!'
+    },
+    {q:'위도에 따른 기후 순서를 바르게 나열한 것은? (적도→극지)',
+     opts:['열대→건조→온대→냉대→한대','온대→열대→냉대→건조→한대','열대→온대→냉대→건조→한대','건조→열대→온대→냉대→한대'],
+     a:0,
+     hints:['지구본을 위아래로 드래그해서 위도별 색 변화를 확인해봐요!','0°(적도)부터 90°(극지)까지 순서대로 생각해요.'],
+     ok:'완벽해요! 🌍 적도(0°)에서 극지방(90°) 순서대로: 열대→건조→온대→냉대→한대예요!',
+     ng:'힌트: 지구본을 아래로 드래그하면서 색 변화를 확인해봐요! 빨강→주황→초록→파랑→보라 순이에요.'
+    }
+  ],
+  // 사건 2 - 경도와 시차
+  [
+    {q:'경도 15° 차이는 몇 시간 시차를 만들까?',
+     opts:['30분','1시간','2시간','15분'],
+     a:1,
+     hints:['지구 한 바퀴(360°)를 하루(24시간)로 나누면?','360 ÷ 24 = ?'],
+     ok:'⏰ 정답! 360° ÷ 24시간 = 15°/시간이에요. 서울은 동경 135° → 135÷15=9 → UTC+9!',
+     ng:'힌트: 지구 360° ÷ 하루 24시간 = ? 시차 계산기에서 서울을 찾아봐요!'
+    },
+    {q:'서울이 오후 9시(21:00)일 때 뉴욕은 몇 시일까?',
+     opts:['오전 7시','오전 10시','오후 3시','다음날 오전 2시'],
+     a:0,
+     hints:['서울 UTC+9, 뉴욕 UTC-5 → 차이는 몇 시간?','시차 계산기에서 뉴욕을 선택해봐요!'],
+     ok:'🗽 정답! 서울 UTC+9, 뉴욕 UTC-5 → 14시간 차이! 21시 - 14시간 = 오전 7시!',
+     ng:'힌트: 서울(UTC+9) - 뉴욕(UTC-5) = 14시간 차이! 시차 계산기를 써봐요!'
+    },
+    {q:'날짜변경선(경도 180°)을 동쪽→서쪽으로 건너면?',
+     opts:['하루가 줄어든다','하루가 늘어난다','시간이 12시간 줄어든다','변화 없다'],
+     a:1,
+     hints:['동쪽으로 갈수록 시간이 빨라져요. 동→서로 이동하면 시간이 "뒤로" 가요.','일본에서 하와이로 비행하면 날짜가 어떻게 될까요?'],
+     ok:'📅 맞아요! 동→서로 날짜변경선을 건너면 시간이 뒤로 가기 때문에 하루가 추가돼요!',
+     ng:'힌트: 동쪽 = 시간이 빠름. 동→서로 건너면 시간이 거꾸로 → 하루가 늘어나요!'
+    }
+  ],
+  // 사건 3 - 계절과 공전
+  [
+    {q:'7월에 호주(남반구)의 계절은?',
+     opts:['봄','여름','가을','겨울'],
+     a:3,
+     hints:['슬라이더를 7월로 맞추고 남반구를 확인해봐요!','북반구가 태양 쪽으로 기울면 남반구는?'],
+     ok:'🏔️ 정답! 7월엔 북반구가 태양 쪽으로 기울어 여름. 남반구는 반대 방향이라 겨울이에요!',
+     ng:'힌트: 슬라이더를 7월로 맞춰봐요. 남반구(호주)는 북반구와 <b>반대 계절</b>이에요!'
+    },
+    {q:'계절이 생기는 근본 원인은?',
+     opts:['지구가 태양 주위를 돌기 때문에','자전축이 23.5° 기울어진 채 공전하기 때문에','지구와 태양 거리가 변하기 때문에','달의 인력 때문에'],
+     a:1,
+     hints:['만약 자전축이 똑바로(0°)라면 계절이 생길까요?','7월 지구가 태양에서 가장 먼데도 북반구는 여름이에요!'],
+     ok:'🌍 완벽! 자전축 23.5° 기울기가 핵심! 이 기울기 때문에 북반구·남반구가 번갈아 태양을 직접 받아요.',
+     ng:'힌트: 7월엔 지구가 태양에서 <b>가장 멀지만</b> 북반구는 여름이에요. 거리보다 <b>자전축 기울기</b>가 중요해요!'
+    }
+  ]
+];
+
+// 케이스별 진행 상태 (전역 — window.pickEv 충돌 방지)
+const evState=[{qi:0,wCnt:0},{qi:0,wCnt:0},{qi:0,wCnt:0}];
+
+function renderEv(caseIdx){
+  showEvQ(caseIdx, 0);
+}
+
+function showEvQ(ci, qi){
+  evState[ci].qi = qi;
+  const qs = CASES[ci];
+  const total = qs.length;
+  const body = document.getElementById('ev'+ci+'-body');
+  if(!body) return;
+  const q = qs[qi];
+  const nums=['①','②','③','④'];
+  body.innerHTML=`
+    <div style="font-size:9px;color:#37474f;margin-bottom:5px;letter-spacing:.5px">증거 ${qi+1}/${total}</div>
+    <div class="ev-q">${q.q}</div>
+    ${q.opts.map((o,j)=>`<button class="ev-opt" id="evopt-${ci}-${j}" onclick="pickEv(${ci},${j})">
+      <span class="ev-num">${nums[j]}</span>${o}</button>`).join('')}
+    <div id="evfb-${ci}"></div>`;
+}
+
+function pickEv(ci, picked){
+  const qi = evState[ci].qi;
+  const qs = CASES[ci];
+  const q  = qs[qi];
+  const total = qs.length;
+  const fb = document.getElementById('evfb-'+ci);
+
+  // 모든 버튼 비활성화
+  q.opts.forEach((_,j)=>{
+    const b=document.getElementById('evopt-'+ci+'-'+j);
+    if(b) b.disabled=true;
+  });
+
+  if(picked === q.a){
+    // 정답
+    const b=document.getElementById('evopt-'+ci+'-'+picked);
+    if(b){b.classList.add('ok');b.querySelector('.ev-num').textContent='✓';}
+    const bonus = evState[ci].wCnt===0?30:evState[ci].wCnt===1?20:10;
+    addPts(bonus);
+    evState[ci].wCnt = 0; // 다음 문제용 오답 초기화
+    fb.innerHTML=`<div class="fb-cosmo ok"><span style="font-size:18px">🤖</span>
+      <div class="fb-txt"><b>증거 확보!</b> ${q.ok}</div></div>`;
+    setTimeout(()=>{
+      if(qi+1 < total){
+        showEvQ(ci, qi+1);
+        addBot(`잘했어요! 다음 증거예요 💪 (${qi+2}/${total})`);
+      } else {
+        // 케이스 완료
+        fb.innerHTML+=`
+          <div style="text-align:center;margin-top:9px;padding:10px;
+            background:rgba(255,213,79,.08);border:1px solid rgba(255,213,79,.25);border-radius:10px">
+            <div style="font-family:'Jua',sans-serif;font-size:15px;color:#ffd54f;margin-bottom:3px">
+              🗂️ 사건 ${ci+1} 해결!</div>
+            <div style="font-size:11px;color:#90caf9">아래 버튼으로 다음 사건을 열어봐요!</div>
+          </div>`;
+        document.getElementById('nc'+ci).style.display='block';
+        addBot(`사건 ${ci+1} 완전 해결! 🎉 대단한 탐정이에요!`);
+        showNotif();
+      }
+    },600);
+  } else {
+    // 오답
+    const b=document.getElementById('evopt-'+ci+'-'+picked);
+    if(b){b.classList.add('ng');b.querySelector('.ev-num').textContent='✗';}
+    evState[ci].wCnt++;
+    const hintIdx = Math.min(evState[ci].wCnt-1, q.hints.length-1);
+    const hint = q.hints[hintIdx] || q.ng;
+    fb.innerHTML=`<div class="fb-cosmo ng"><span style="font-size:18px">🤖</span>
+      <div class="fb-txt">아쉬워요! <b>힌트:</b> ${hint}<br>
+      <span style="color:#37474f;font-size:10px">다시 골라봐요!</span></div></div>`;
+    setTimeout(()=>{
+      q.opts.forEach((_,j)=>{
+        if(j!==picked){
+          const btn=document.getElementById('evopt-'+ci+'-'+j);
+          if(btn) btn.disabled=false;
+        }
+      });
+    },500);
+  }
+}
+
+/* ══════════════════════════════════
+   D3 지구본
+══════════════════════════════════ */
+const GW=460,GH=460,GR=200;
+const grat=d3.geoGraticule()();
+let wF=null;
+
+function lc(lat){
+  const a=Math.abs(lat);
+  if(a<10)return'#7f0000';if(a<23.5)return'#c62828';
+  if(a<35)return'#bf360c';if(a<50)return'#1b5e20';
+  if(a<66.5)return'#0d47a1';return'#311b92';
+}
+let selR=null;
+
+function drawG(svgEl,rot,mode){
+  const proj=d3.geoOrthographic().scale(GR).translate([GW/2,GH/2]).rotate(rot).clipAngle(90);
+  const path=d3.geoPath(proj);
+  const sel=d3.select(svgEl);
+  sel.selectAll('*').remove();
+  sel.append('circle').attr('cx',GW/2).attr('cy',GH/2).attr('r',GR)
+     .attr('fill','#0a1a3a').attr('stroke','rgba(100,180,255,.3)').attr('stroke-width',1.5);
+
+  if(mode==='lat'){
+    [[[-10,10],'rgba(183,28,28,.25)'],[[-23.5,-10],'rgba(180,40,40,.18)'],
+     [[10,23.5],'rgba(180,40,40,.18)'],[[-35,-23.5],'rgba(200,70,0,.18)'],
+     [[23.5,35],'rgba(200,70,0,.18)'],[[-50,-35],'rgba(40,100,40,.2)'],
+     [[35,50],'rgba(40,100,40,.2)'],[[-66.5,-50],'rgba(15,80,170,.2)'],
+     [[50,66.5],'rgba(15,80,170,.2)'],[[-90,-66.5],'rgba(55,25,140,.24)'],
+     [[66.5,90],'rgba(55,25,140,.24)']].forEach(([r,f])=>{
+      const feat={type:'Feature',geometry:{type:'Polygon',coordinates:[[[-180,r[0]],[-180,r[1]],[180,r[1]],[180,r[0]],[-180,r[0]]]]}};
+      sel.append('path').datum(feat).attr('d',path).attr('fill',f);
+    });
+    if(selR){
+      [{min:selR.min,max:selR.max},{min:-selR.max,max:-selR.min}].forEach(r=>{
+        const f={type:'Feature',geometry:{type:'Polygon',coordinates:[[[-180,r.min],[-180,r.max],[180,r.max],[180,r.min],[-180,r.min]]]}};
+        sel.append('path').datum(f).attr('d',path).attr('fill',selR.c+'55').attr('stroke',selR.c).attr('stroke-width',1.5);
+      });
+    }
+  }
+
+  sel.append('path').datum(grat).attr('d',path).attr('fill','none')
+     .attr('stroke',mode==='lon'?'rgba(100,180,255,.28)':'rgba(100,180,255,.14)')
+     .attr('stroke-width',.4);
+
+  if(wF){
+    sel.selectAll('.cnt').data(wF).enter().append('path').attr('class','cnt').attr('d',path)
+       .attr('fill',mode==='lon'?'rgba(80,120,200,.8)':f=>{
+         const c=d3.geoCentroid(f);
+         return selR?(Math.abs(c[1])>=selR.min&&Math.abs(c[1])<selR.max?selR.c:'rgba(40,60,120,.45)'):lc(c[1]);
+       })
+       .attr('fill-opacity',mode==='lon'?.82:.8)
+       .attr('stroke',mode==='lon'?'rgba(80,150,255,.2)':'rgba(255,255,255,.15)')
+       .attr('stroke-width',.4);
+  }
+
+  if(mode==='lat'){
+    const eq={type:'Feature',geometry:{type:'LineString',coordinates:d3.range(-180,181,2).map(d=>[d,0])}};
+    sel.append('path').datum(eq).attr('d',path).attr('fill','none').attr('stroke','#ef5350').attr('stroke-width',2.5).attr('stroke-dasharray','6,4');
+    [{lat:23.5,c:'#ff9800'},{lat:-23.5,c:'#ff9800'},{lat:66.5,c:'#7c4dff'},{lat:-66.5,c:'#7c4dff'}].forEach(({lat,c})=>{
+      const l={type:'Feature',geometry:{type:'LineString',coordinates:d3.range(-180,181,2).map(d=>[d,lat])}};
+      sel.append('path').datum(l).attr('d',path).attr('fill','none').attr('stroke',c).attr('stroke-width',1.4).attr('opacity',.8);
+    });
+    [{lat:0,t:'적도 0°',c:'#ef5350'},{lat:23.5,t:'23.5°N',c:'#ff9800'},{lat:66.5,t:'66.5°N',c:'#7c4dff'}].forEach(({lat,t,c})=>{
+      const pt=proj([95,lat]);
+      if(pt&&pt[0]>0&&pt[0]<GW){
+        sel.append('text').attr('x',pt[0]+3).attr('y',pt[1]+3).attr('font-size',11).attr('fill',c)
+           .attr('font-family','Noto Sans KR').attr('font-weight','700')
+           .attr('stroke','#05080f').attr('stroke-width',3).attr('paint-order','stroke').text(t);
+      }
+    });
+  }
+
+  if(mode==='lon'){
+    const p0={type:'Feature',geometry:{type:'LineString',coordinates:d3.range(-89,90,1).map(d=>[0,d])}};
+    sel.append('path').datum(p0).attr('d',path).attr('fill','none').attr('stroke','#e53935').attr('stroke-width',2.8);
+    const p180={type:'Feature',geometry:{type:'LineString',coordinates:d3.range(-89,90,1).map(d=>[179.9,d])}};
+    sel.append('path').datum(p180).attr('d',path).attr('fill','none').attr('stroke','#e53935').attr('stroke-width',2.3).attr('stroke-dasharray','7,4');
+    const cd=((-lonRot[0])%360+360)%360, cn=cd>180?cd-360:cd;
+    const pc={type:'Feature',geometry:{type:'LineString',coordinates:d3.range(-89,90,1).map(d=>[cn,d])}};
+    sel.append('path').datum(pc).attr('d',path).attr('fill','none').attr('stroke','#40c4ff').attr('stroke-width',2.8).attr('stroke-dasharray','7,4');
+    const cpt=proj([cn,0]);
+    if(cpt&&cpt[0]>10&&cpt[0]<GW-10){
+      const hh=Math.round(cn/15);
+      sel.append('text').attr('x',cpt[0]).attr('y',GH/2+GR+20).attr('font-size',10).attr('fill','#40c4ff')
+         .attr('font-weight','700').attr('text-anchor','middle').attr('font-family','Noto Sans KR')
+         .attr('stroke','#05080f').attr('stroke-width',2.5).attr('paint-order','stroke')
+         .text(Math.round(cn)+'°'+(hh>=0?' (+':' (')+hh+'h)');
+    }
+    [-90,-60,-30,30,60,90].forEach(lon=>{
+      const pt=proj([lon,0]);
+      if(pt&&pt[0]>10&&pt[0]<GW-10){
+        sel.append('text').attr('x',pt[0]).attr('y',GH/2+GR+20).attr('font-size',9).attr('fill','#546e7a')
+           .attr('text-anchor','middle').attr('font-family','Noto Sans KR').attr('font-weight','700')
+           .attr('stroke','#05080f').attr('stroke-width',2).attr('paint-order','stroke').text(lon+'°');
+      }
+    });
+    const p18=proj([179.5,22]);
+    if(p18&&p18[0]>0&&p18[0]<GW){
+      sel.append('text').attr('x',p18[0]).attr('y',p18[1]-7).attr('font-size',10).attr('fill','#e53935')
+         .attr('font-weight','700').attr('text-anchor','middle').attr('font-family','Noto Sans KR')
+         .attr('stroke','#05080f').attr('stroke-width',2.5).attr('paint-order','stroke').text('180°');
+    }
+    updatePins(proj);
+  }
+}
+
+function updatePins(proj){
+  const outer=document.getElementById('lonOuter');
+  if(!outer) return;
+  const rect=outer.getBoundingClientRect();
+  if(!rect.width) return;
+  const sc=rect.width/460;
+  function pp(id,lon,lat){
+    const pin=document.getElementById(id);
+    if(!pin) return;
+    const pt=proj([lon,lat]);
+    const ok=pt&&pt[0]>5&&pt[0]<455&&pt[1]>5&&pt[1]<455;
+    pin.style.display=ok?'flex':'none';
+    if(ok){pin.style.left=(pt[0]*sc)+'px';pin.style.top=(pt[1]*sc)+'px';}
+  }
+  pp('londonPin',0,51.5);
+  pp('seoulPin',127,37.5);
+}
+
+/* 위도 지구본 — 상하+좌우 드래그 */
+let latRot=[0,0,0], latDrag=false, latLX=0, latLY=0, latPX=0, latPY=0, latRaf=null;
+function latFlush(){
+  latRaf=null;
+  latRot[0] = latRot[0] - latPX*0.5;                          // 좌우 (경도 회전)
+  latRot[1] = Math.max(-90,Math.min(90,latRot[1]-latPY*0.42)); // 상하 (위도 이동)
+  latPX=0; latPY=0;
+  drawG(document.getElementById('svgLat'),latRot,'lat');
+  updateLatUI(-latRot[1]);
+  sunLat=-latRot[1];
+}
+function setupLat(){
+  const svg=document.getElementById('svgLat');
+  const outer=document.getElementById('latOuter');
+  [svg,outer].forEach(el=>{
+    el.addEventListener('mousedown',e=>{
+      latDrag=true;latLX=e.clientX;latLY=e.clientY;e.preventDefault();
+    },{passive:false});
+    el.addEventListener('touchstart',e=>{
+      latDrag=true;latLX=e.touches[0].clientX;latLY=e.touches[0].clientY;e.preventDefault();
+    },{passive:false});
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!latDrag)return;
+    latPX+=e.clientX-latLX; latLX=e.clientX;
+    latPY+=e.clientY-latLY; latLY=e.clientY;
+    if(!latRaf) latRaf=requestAnimationFrame(latFlush);
+  });
+  window.addEventListener('touchmove',e=>{
+    if(!latDrag)return;
+    latPX+=e.touches[0].clientX-latLX; latLX=e.touches[0].clientX;
+    latPY+=e.touches[0].clientY-latLY; latLY=e.touches[0].clientY;
+    if(!latRaf) latRaf=requestAnimationFrame(latFlush);
+  },{passive:true});
+  window.addEventListener('mouseup',()=>latDrag=false);
+  window.addEventListener('touchend',()=>latDrag=false);
+  drawG(svg,latRot,'lat'); updateLatUI(0);
+}
+
+// 전체 색상 초기화 함수 (기후 선택 해제)
+function clearCliSel(){
+  selR=null;
+  document.querySelectorAll('.cli-row').forEach(r=>r.classList.remove('on'));
+  document.querySelectorAll('.cli-pop').forEach(p=>p.classList.remove('show'));
+  document.querySelectorAll('[id^="ca-"]').forEach(a=>a.textContent='▶');
+  drawG(document.getElementById('svgLat'),latRot,'lat');
+  addBot('전체 기후 색상으로 돌아왔어요! 🌍 지구본을 자유롭게 탐색해봐요!');
+}
+
+const LI=[
+  {min:0,max:10,em:'🌴',lbl:'열대우림 기후',dsc:'연중 30°C 이상! 울창한 밀림.',c:'#ef9a9a',bg:'rgba(183,28,28,.15)'},
+  {min:10,max:23.5,em:'🌾',lbl:'열대사바나',dsc:'건기·우기 교차. 아프리카 초원!',c:'#ffcc80',bg:'rgba(198,40,40,.12)'},
+  {min:23.5,max:35,em:'🏜️',lbl:'건조 기후',dsc:'비가 거의 없어. 사하라 사막!',c:'#ffb74d',bg:'rgba(230,81,0,.13)'},
+  {min:35,max:50,em:'🌸',lbl:'온대 기후',dsc:'사계절 뚜렷! 우리나라 여기.',c:'#a5d6a7',bg:'rgba(46,125,50,.15)'},
+  {min:50,max:66.5,em:'🌲',lbl:'냉대 기후',dsc:'긴 겨울! 타이가 숲.',c:'#90caf9',bg:'rgba(21,101,192,.15)'},
+  {min:66.5,max:90,em:'🧊',lbl:'한대 기후',dsc:'연중 얼음! 이누이트 거주.',c:'#ce93d8',bg:'rgba(69,39,160,.18)'}
+];
+function gi(lat){const a=Math.abs(lat);return LI.find(x=>a>=x.min&&a<x.max)||LI[5];}
+function updateLatUI(lat){
+  const i=gi(lat);
+  document.getElementById('latEm').textContent=i.em;
+  document.getElementById('latLbl').textContent=i.lbl;
+  document.getElementById('latLbl').style.color=i.c;
+  document.getElementById('latDsc').textContent=i.dsc;
+  document.getElementById('latDeg').textContent=Math.round(Math.abs(lat))+'°'+(lat>=0?'N':'S');
+  document.getElementById('latStat').style.background=i.bg;
+  document.getElementById('latStat').style.borderColor=i.c+'44';
+  const e=90-Math.abs(lat);
+  document.getElementById('sunAng').textContent=Math.round(e)+'°';
+  document.getElementById('sunWord').textContent=e>60?'수직 집중 🔴':e>30?'비스듬 🟡':'수평 분산 🔵';
+}
+
+/* ══════════════════════════════════
+   기후 목록
+══════════════════════════════════ */
+// 기후별 SVG (인라인)
+const SC={
+  tropical:`<svg viewBox="0 0 280 90" xmlns="http://www.w3.org/2000/svg"><rect width="280" height="90" fill="#0d3320"/><rect x="0" y="62" width="280" height="28" fill="#0a2518"/><ellipse cx="35" cy="63" rx="35" ry="28" fill="#0d4525"/><ellipse cx="85" cy="56" rx="42" ry="34" fill="#0f5c30"/><ellipse cx="140" cy="60" rx="44" ry="30" fill="#0d4525"/><ellipse cx="195" cy="56" rx="40" ry="32" fill="#0f5c30"/><ellipse cx="250" cy="63" rx="33" ry="25" fill="#0d4525"/><rect x="126" y="30" width="4" height="36" fill="#2e1a0e"/><ellipse cx="128" cy="28" rx="16" ry="9" fill="#0d4525"/><text x="140" y="85" text-anchor="middle" font-size="9" fill="#4caf50" font-family="sans-serif">열대우림 — 연중 고온다습</text></svg>`,
+  savanna:`<svg viewBox="0 0 280 90"><rect width="280" height="90" fill="#3e1a00"/><rect x="0" y="70" width="280" height="20" fill="#2a1000"/><rect x="0" y="63" width="280" height="10" fill="#5d2c00"/><rect x="45" y="38" width="5" height="32" fill="#2e1000"/><ellipse cx="47" cy="33" rx="23" ry="9" fill="#1a3d00"/><rect x="170" y="42" width="4" height="28" fill="#2e1000"/><ellipse cx="172" cy="38" rx="20" ry="8" fill="#224d00"/><ellipse cx="112" cy="60" rx="20" ry="10" fill="#4a1800"/><rect x="108" y="48" width="8" height="13" fill="#bf360c"/><ellipse cx="112" cy="46" rx="5" ry="4" fill="#8d1a00"/><text x="140" y="85" text-anchor="middle" font-size="9" fill="#ff9800" font-family="sans-serif">사바나 — 건기·우기 교차</text></svg>`,
+  dry:`<svg viewBox="0 0 280 90"><rect width="280" height="90" fill="#5d1a00"/><rect x="0" y="68" width="280" height="22" fill="#3e1000"/><ellipse cx="70" cy="72" rx="78" ry="14" fill="#8d3000"/><ellipse cx="200" cy="74" rx="85" ry="12" fill="#6d2400"/><rect x="232" y="40" width="6" height="30" fill="#1b5e20"/><rect x="225" y="52" width="16" height="5" fill="#2e7d32"/><text x="140" y="85" text-anchor="middle" font-size="9" fill="#ffcc80" font-family="sans-serif">사막 — 극건조·큰 일교차</text></svg>`,
+  temperate:`<svg viewBox="0 0 280 90"><rect width="280" height="90" fill="#0d2040"/><rect x="0" y="72" width="280" height="18" fill="#0d3015"/><rect x="14" y="42" width="6" height="34" fill="#2e1000"/><ellipse cx="17" cy="38" rx="14" ry="11" fill="#bf360c"/><rect x="88" y="38" width="6" height="38" fill="#2e1000"/><ellipse cx="91" cy="34" rx="16" ry="13" fill="#1b5e20"/><rect x="178" y="40" width="6" height="36" fill="#2e1000"/><ellipse cx="181" cy="36" rx="14" ry="12" fill="#c62828"/><rect x="115" y="48" width="42" height="26" fill="#bf5000"/><polygon points="110,48 136,30 162,48" fill="#6d2400"/><rect x="127" y="58" width="12" height="16" fill="#1a0800"/><rect x="142" y="5" width="7" height="12" fill="#6d2400"/><text x="140" y="86" text-anchor="middle" font-size="9" fill="#90caf9" font-family="sans-serif">온대 — 사계절 뚜렷</text></svg>`,
+  subarctic:`<svg viewBox="0 0 280 90"><rect width="280" height="90" fill="#0d1520"/><rect x="0" y="70" width="280" height="20" fill="white" opacity=".35"/><polygon points="22,70 35,38 48,70" fill="#0a2e10"/><polygon points="24,70 35,44 46,70" fill="#0f4020"/><polygon points="58,70 74,32 90,70" fill="#0a2e10"/><polygon points="60,70 74,40 88,70" fill="#0f4020"/><polygon points="136,70 152,28 168,70" fill="#0a2e10"/><polygon points="138,70 152,37 166,70" fill="#0f4020"/><polygon points="202,70 218,35 234,70" fill="#0a2e10"/><text x="140" y="86" text-anchor="middle" font-size="9" fill="#80deea" font-family="sans-serif">냉대 — 침엽수림(타이가)</text></svg>`,
+  polar:`<svg viewBox="0 0 280 90"><rect width="280" height="90" fill="#03060f"/><rect x="0" y="62" width="280" height="28" fill="#8eb8d8"/><path d="M 0 35 Q 75 18 150 30 Q 210 42 280 26" fill="none" stroke="#00e676" stroke-width="2.5" opacity=".6"/><path d="M 0 46 Q 85 29 168 43 Q 225 54 280 38" fill="none" stroke="#40c4ff" stroke-width="2" opacity=".5"/><polygon points="12,62 40,46 68,62" fill="white" opacity=".75"/><polygon points="58,62 96,44 134,62" fill="#b3d8f0" opacity=".7"/><text x="140" y="85" text-anchor="middle" font-size="9" fill="#80deea" font-family="sans-serif">한대 — 영구 빙설</text></svg>`
+};
+// 의식주 SVG
+const LS={
+  th:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#0a2010"/><rect x="26" y="27" width="6" height="30" fill="#2e1a0e"/><rect x="63" y="27" width="6" height="30" fill="#2e1a0e"/><rect x="35" y="27" width="6" height="30" fill="#2e1a0e"/><rect x="54" y="27" width="6" height="30" fill="#2e1a0e"/><rect x="23" y="25" width="49" height="5" fill="#3e2723"/><rect x="26" y="13" width="43" height="13" fill="#a0785a"/><polygon points="21,13 47.5,2 74,13" fill="#5d3a2a"/><rect x="36" y="15" width="9" height="7" fill="#40c4ff" stroke="#5d3a2a" stroke-width="1"/><rect x="50" y="15" width="9" height="7" fill="#40c4ff" stroke="#5d3a2a" stroke-width="1"/><text x="47" y="62" text-anchor="middle" font-size="7" fill="#80cbc4" font-family="sans-serif">고상가옥</text></svg>`,
+  tc:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#0a2010"/><circle cx="47" cy="13" r="10" fill="#FDBCB4"/><path d="M 31 28 Q 47 20 63 28 L 67 60 Q 47 68 27 60 Z" fill="#29b6f6"/><path d="M 35 31 L 21 62" stroke="#0288d1" stroke-width="8" stroke-linecap="round"/><path d="M 59 31 L 73 62" stroke="#0288d1" stroke-width="8" stroke-linecap="round"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#80cbc4" font-family="sans-serif">얇은 통기성 옷</text></svg>`,
+  tf:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#0a2010"/><path d="M 26 50 Q 47 16 68 50" fill="none" stroke="#ffd600" stroke-width="10" stroke-linecap="round"/><circle cx="30" cy="36" r="11" fill="#ff9800" opacity=".9"/><circle cx="63" cy="38" r="9" fill="#4caf50" opacity=".9"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#80cbc4" font-family="sans-serif">바나나·망고</text></svg>`,
+  sh:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#2e0f00"/><rect x="0" y="54" width="95" height="11" fill="#1a0800"/><ellipse cx="47" cy="44" rx="28" ry="12" fill="#5d2400"/><rect x="19" y="30" width="56" height="15" fill="#7a3200"/><polygon points="14,30 47,9 80,30" fill="#4a1e00"/><polygon points="16,30 47,11 78,30" fill="#5d2800"/><rect x="40" y="36" width="14" height="10" rx="2" fill="#0d0800"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#ffcc80" font-family="sans-serif">론다벨 흙벽집</text></svg>`,
+  sc:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#2e0f00"/><circle cx="47" cy="13" r="10" fill="#8d6e63"/><path d="M 31 28 Q 47 20 63 28 L 67 62 Q 47 68 27 62 Z" fill="#c62828"/><path d="M 35 31 L 21 63" stroke="#8d0000" stroke-width="8" stroke-linecap="round"/><path d="M 59 31 L 73 63" stroke="#8d0000" stroke-width="8" stroke-linecap="round"/><circle cx="47" cy="30" r="6" fill="none" stroke="#ffd700" stroke-width="2"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#ffcc80" font-family="sans-serif">마사이족 슈카</text></svg>`,
+  sf:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#2e0f00"/><ellipse cx="47" cy="47" rx="34" ry="12" fill="#3e2723"/><circle cx="47" cy="33" r="19" fill="#fff9c4"/><circle cx="47" cy="33" r="15" fill="#FFF9C4"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#ffcc80" font-family="sans-serif">우갈리(옥수수죽)</text></svg>`,
+  dh:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#3e1a00"/><rect x="0" y="54" width="95" height="11" fill="#5d2c00"/><rect x="14" y="18" width="67" height="38" fill="#c47840"/><rect x="9" y="12" width="77" height="7" fill="#a86030"/><rect x="22" y="26" width="13" height="9" fill="#1a237e" stroke="#a86030" stroke-width="1.5"/><rect x="60" y="26" width="13" height="9" fill="#1a237e" stroke="#a86030" stroke-width="1.5"/><rect x="40" y="35" width="15" height="21" rx="1" fill="#2e1000"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#ffcc80" font-family="sans-serif">흙벽집</text></svg>`,
+  dc:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#3e1a00"/><circle cx="47" cy="13" r="10" fill="#FDBCB4"/><ellipse cx="47" cy="12" rx="12" ry="9" fill="white"/><path d="M 29 28 Q 47 20 65 28 L 69 62 Q 47 68 25 62 Z" fill="white"/><path d="M 33 31 L 17 63" stroke="#e0e0e0" stroke-width="11" stroke-linecap="round"/><path d="M 61 31 L 77 63" stroke="#e0e0e0" stroke-width="11" stroke-linecap="round"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#ffcc80" font-family="sans-serif">토브(흰 로브)</text></svg>`,
+  df:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#3e1a00"/><rect x="43" y="8" width="7" height="40" fill="#3e2723"/><ellipse cx="47" cy="6" rx="19" ry="11" fill="#1b5e20"/><ellipse cx="32" cy="13" rx="16" ry="8" fill="#2e7d32" transform="rotate(-25,32,13)"/><ellipse cx="62" cy="13" rx="16" ry="8" fill="#2e7d32" transform="rotate(25,62,13)"/><ellipse cx="38" cy="42" rx="6" ry="8" fill="#4e342e"/><ellipse cx="47" cy="45" rx="6" ry="8" fill="#3e2723"/><ellipse cx="56" cy="43" rx="6" ry="8" fill="#4e342e"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#ffcc80" font-family="sans-serif">대추야자</text></svg>`,
+  tmh:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#051020"/><rect x="0" y="54" width="95" height="11" fill="#1b5e20"/><rect x="13" y="24" width="69" height="32" fill="#9a2020"/><line x1="13" y1="32" x2="82" y2="32" stroke="#7a0000" stroke-width=".8"/><line x1="13" y1="40" x2="82" y2="40" stroke="#7a0000" stroke-width=".8"/><line x1="13" y1="48" x2="82" y2="48" stroke="#7a0000" stroke-width=".8"/><line x1="27" y1="24" x2="27" y2="56" stroke="#7a0000" stroke-width=".8"/><line x1="47" y1="24" x2="47" y2="56" stroke="#7a0000" stroke-width=".8"/><line x1="67" y1="24" x2="67" y2="56" stroke="#7a0000" stroke-width=".8"/><polygon points="7,24 47,5 87,24" fill="#5d1500"/><rect x="19" y="30" width="17" height="12" fill="#40c4ff" stroke="white" stroke-width="1.5"/><rect x="59" y="30" width="17" height="12" fill="#40c4ff" stroke="white" stroke-width="1.5"/><rect x="39" y="40" width="16" height="16" rx="1" fill="#1a0800"/><rect x="59" y="5" width="7" height="12" fill="#5d1500"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#90caf9" font-family="sans-serif">유럽 벽돌집</text></svg>`,
+  tmc:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#051020"/><circle cx="47" cy="13" r="10" fill="#FDBCB4"/><path d="M 31 28 Q 47 20 63 28 L 67 62 Q 47 68 27 62 Z" fill="#e91e8c"/><path d="M 31 28 Q 47 20 63 28 L 63 46 Q 47 52 31 46 Z" fill="#880e4f"/><path d="M 35 31 L 19 63" stroke="#c2185b" stroke-width="10" stroke-linecap="round"/><path d="M 59 31 L 75 63" stroke="#c2185b" stroke-width="10" stroke-linecap="round"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#90caf9" font-family="sans-serif">한복</text></svg>`,
+  tmf:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#051020"/><ellipse cx="47" cy="46" rx="32" ry="11" fill="#2e1800"/><rect x="16" y="28" width="62" height="14" fill="#3e2200"/><rect x="18" y="18" width="58" height="12" rx="1" fill="#FFECB3"/><rect x="20" y="14" width="14" height="5" fill="#EF9A9A"/><rect x="40" y="14" width="12" height="5" fill="#C8E6C9"/><rect x="56" y="14" width="16" height="5" fill="#FFF9C4"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#90caf9" font-family="sans-serif">비빔밥</text></svg>`,
+  sah:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#0a1420"/><rect x="0" y="54" width="95" height="11" fill="white" opacity=".35"/><rect x="17" y="24" width="61" height="32" fill="#6d3200"/><line x1="17" y1="32" x2="78" y2="32" stroke="#4e1e00" stroke-width="2"/><line x1="17" y1="41" x2="78" y2="41" stroke="#4e1e00" stroke-width="2"/><polygon points="11,24 47,6 83,24" fill="#4e1e00"/><polygon points="11,22 47,4 83,22" fill="white" opacity=".65"/><rect x="26" y="30" width="17" height="12" fill="#40c4ff" stroke="#4e1e00" stroke-width="2"/><rect x="52" y="30" width="17" height="12" fill="#40c4ff" stroke="#4e1e00" stroke-width="2"/><rect x="39" y="40" width="17" height="14" rx="1" fill="#0d0600"/><rect x="59" y="4" width="7" height="14" fill="#4e1e00"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#90caf9" font-family="sans-serif">통나무집</text></svg>`,
+  sac:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#0a1420"/><circle cx="47" cy="13" r="10" fill="#FDBCB4"/><path d="M 29 28 Q 47 20 65 28 L 69 62 Q 47 68 25 62 Z" fill="#3e2723"/><path d="M 29 28 Q 47 20 65 28 L 65 47 Q 47 53 29 47 Z" fill="#2a1500"/><rect x="38" y="19" width="18" height="5" fill="#2a1500" rx="2"/><path d="M 33 31 L 14 63" stroke="#2a1500" stroke-width="12" stroke-linecap="round"/><path d="M 61 31 L 80 63" stroke="#2a1500" stroke-width="12" stroke-linecap="round"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#90caf9" font-family="sans-serif">두꺼운 방한복</text></svg>`,
+  saf:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#0a1420"/><ellipse cx="43" cy="37" rx="28" ry="12" fill="#e64a19"/><polygon points="71,37 86,28 86,46" fill="#e64a19"/><ellipse cx="30" cy="35" r="3.5" fill="white"/><circle cx="29" cy="34.5" r="1.5" fill="#1a237e"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#90caf9" font-family="sans-serif">연어·순록</text></svg>`,
+  ph:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#03040f"/><rect x="0" y="52" width="95" height="13" fill="#bdd8f0"/><ellipse cx="47" cy="52" rx="36" ry="22" fill="#c8e4f5"/><ellipse cx="47" cy="52" rx="36" ry="22" fill="white" opacity=".5"/><path d="M 13 52 Q 47 32 81 52" fill="none" stroke="#80b0cc" stroke-width="1.5"/><path d="M 20 43 Q 47 30 74 43" fill="none" stroke="#80b0cc" stroke-width="1.5"/><ellipse cx="47" cy="63" rx="11" ry="7" fill="#03040f"/><rect x="38" y="58" width="18" height="6" fill="#03040f"/><path d="M 0 28 Q 47 13 95 20" fill="none" stroke="#00e676" stroke-width="2" opacity=".55"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#80deea" font-family="sans-serif">이글루</text></svg>`,
+  pc:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#03040f"/><circle cx="47" cy="13" r="10" fill="#FDBCB4"/><ellipse cx="47" cy="12" rx="12" ry="8" fill="#4e342e" opacity=".75"/><path d="M 27 28 Q 47 20 67 28 L 71 62 Q 47 68 23 62 Z" fill="#2e1800"/><path d="M 27 28 Q 47 20 67 28 L 67 47 Q 47 53 27 47 Z" fill="#1a0c00"/><rect x="38" y="28" width="18" height="5" fill="#2e1800" rx="2.5"/><path d="M 31 31 L 11 63" stroke="#1a0c00" stroke-width="13" stroke-linecap="round"/><path d="M 63 31 L 83 63" stroke="#1a0c00" stroke-width="13" stroke-linecap="round"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#80deea" font-family="sans-serif">아노락 방한복</text></svg>`,
+  pf:`<svg viewBox="0 0 95 65"><rect width="95" height="65" fill="#03040f"/><rect x="0" y="48" width="95" height="17" fill="#1a3a5c"/><ellipse cx="47" cy="55" rx="32" ry="10" fill="#37474f"/><ellipse cx="47" cy="49" rx="26" ry="14" fill="#455a64"/><circle cx="60" cy="43" r="5" fill="#2d3e45"/><circle cx="59" cy="42" r="1.5" fill="white"/><text x="47" y="63" text-anchor="middle" font-size="7" fill="#80deea" font-family="sans-serif">물개·생선</text></svg>`
+};
+
+const CD={
+  tropical:{name:'🌴 열대우림',lr:'0°~10°',ts:'연중 25~35°C',tw:'연중 25~35°C',co:'브라질, 인도네시아',d:'연중 고온다습! 울창한 밀림.',scene:SC.tropical,c:'#ef9a9a',bg:'rgba(183,28,28,.15)',mn:0,mx:10,
+    life:[{e:'👕',t:'의복',d:'얇은 통기성 옷',s:LS.tc},{e:'🍌',t:'음식',d:'바나나·망고',s:LS.tf},{e:'🏠',t:'주거',d:'고상가옥',s:LS.th}]},
+  savanna:{name:'🌾 열대사바나',lr:'10°~23.5°',ts:'25~40°C(건기)',tw:'20~30°C(우기)',co:'케냐, 탄자니아',d:'건기·우기가 뚜렷!',scene:SC.savanna,c:'#ffcc80',bg:'rgba(198,40,40,.12)',mn:10,mx:23.5,
+    life:[{e:'👗',t:'의복',d:'마사이족 슈카',s:LS.sc},{e:'🌽',t:'음식',d:'우갈리(옥수수죽)',s:LS.sf},{e:'🏡',t:'주거',d:'론다벨 흙벽집',s:LS.sh}]},
+  dry:{name:'🏜️ 건조기후',lr:'23.5°~35°',ts:'35~50°C',tw:'10~20°C',co:'이집트, 사우디',d:'비가 거의 없어! 사하라 사막.',scene:SC.dry,c:'#ffb74d',bg:'rgba(230,81,0,.13)',mn:23.5,mx:35,
+    life:[{e:'🧕',t:'의복',d:'토브(흰 로브)',s:LS.dc},{e:'🌴',t:'음식',d:'대추야자',s:LS.df},{e:'🏕️',t:'주거',d:'흙벽집',s:LS.dh}]},
+  temperate:{name:'🌸 온대기후',lr:'35°~50°★한국',ts:'20~30°C',tw:'-5~10°C',co:'한국, 일본, 프랑스',d:'사계절 뚜렷! 우리나라.',scene:SC.temperate,c:'#a5d6a7',bg:'rgba(46,125,50,.15)',mn:35,mx:50,
+    life:[{e:'👘',t:'의복',d:'한복',s:LS.tmc},{e:'🍱',t:'음식',d:'쌀밥·김치',s:LS.tmf},{e:'🏠',t:'주거',d:'유럽 벽돌집',s:LS.tmh}]},
+  subarctic:{name:'🌲 냉대기후',lr:'50°~66.5°',ts:'10~20°C',tw:'-30~-10°C',co:'러시아, 캐나다',d:'긴 겨울! 타이가 숲.',scene:SC.subarctic,c:'#90caf9',bg:'rgba(21,101,192,.15)',mn:50,mx:66.5,
+    life:[{e:'🧥',t:'의복',d:'두꺼운 방한복',s:LS.sac},{e:'🐟',t:'음식',d:'연어·순록',s:LS.saf},{e:'🏠',t:'주거',d:'통나무집',s:LS.sah}]},
+  polar:{name:'🧊 한대기후',lr:'66.5°~90°',ts:'-10~0°C',tw:'-50~-20°C',co:'그린란드, 북극',d:'연중 얼음! 이누이트.',scene:SC.polar,c:'#ce93d8',bg:'rgba(69,39,160,.18)',mn:66.5,mx:90,
+    life:[{e:'🧤',t:'의복',d:'아노락 방한복',s:LS.pc},{e:'🦭',t:'음식',d:'물개·생선',s:LS.pf},{e:'🏔️',t:'주거',d:'이글루',s:LS.ph}]}
+};
+
+const CLI=[
+  {k:'tropical',lat:5},{k:'savanna',lat:15},{k:'dry',lat:28},
+  {k:'temperate',lat:40},{k:'subarctic',lat:58},{k:'polar',lat:75}
+];
+
+const cliEl=document.getElementById('cliList');
+CLI.forEach(({k,lat})=>{
+  const d=CD[k];
+  const row=document.createElement('div');
+  row.className='cli-row'; row.id='cr-'+k;
+  row.style.background=d.bg;
+  row.innerHTML=`<span style="font-size:16px">${d.name.split(' ')[0]}</span>
+    <div style="flex:1"><div style="color:${d.c};font-weight:700;font-size:11px">${d.name}</div>
+    <div style="color:#37474f;font-size:9px">${d.lr}</div></div>
+    <span id="ca-${k}" style="font-size:10px;color:#37474f">▶</span>`;
+  const pop=document.createElement('div');
+  pop.className='cli-pop'; pop.id='cp-'+k;
+  pop.innerHTML=`<div>${d.scene}</div>
+    <div style="padding:8px 10px;background:#0a0d1a">
+      <div style="font-family:'Jua';font-size:11px;color:${d.c};margin-bottom:4px">${d.name} · ${d.lr}</div>
+      <div style="display:flex;gap:5px;margin-bottom:5px;flex-wrap:wrap">
+        <div style="background:rgba(255,255,255,.05);border-radius:6px;padding:3px 7px;font-size:9px;color:${d.c}">☀️ ${d.ts}</div>
+        <div style="background:rgba(255,255,255,.05);border-radius:6px;padding:3px 7px;font-size:9px;color:${d.c}">❄️ ${d.tw}</div>
+        <div style="background:rgba(255,255,255,.05);border-radius:6px;padding:3px 7px;font-size:9px;color:${d.c}">🌍 ${d.co}</div>
+      </div>
+      <div style="font-size:10px;color:#37474f;margin-bottom:5px">${d.d}</div>
+      <div style="font-size:10px;font-weight:700;color:${d.c};margin-bottom:4px">의 · 식 · 주</div>
+      <div class="lgrids">
+        ${d.life.map(l=>`<div class="li-card">${l.s}<div class="li-info"><div class="lt">${l.e} ${l.t}</div><div class="ld">${l.d}</div></div></div>`).join('')}
+      </div>
+    </div>`;
+  row.onclick=()=>{
+    const open=pop.classList.contains('show');
+    document.querySelectorAll('.cli-pop').forEach(p=>p.classList.remove('show'));
+    document.querySelectorAll('.cli-row').forEach(r=>{r.classList.remove('on');});
+    document.querySelectorAll('[id^="ca-"]').forEach(a=>a.textContent='▶');
+    if(!open){
+      pop.classList.add('show'); row.classList.add('on');
+      document.getElementById('ca-'+k).textContent='▼';
+      latRot=[0,-lat,0]; drawG(document.getElementById('svgLat'),latRot,'lat');
+      updateLatUI(lat); sunLat=lat;
+      selR={min:d.mn,max:d.mx,c:d.c};
+      drawG(document.getElementById('svgLat'),latRot,'lat');
+      const msgs={
+        tropical:'🌴 열대우림! 항상 30°C 이상이고 비도 많아요. 왜 그럴까요? 햇빛 각도를 확인해봐요!',
+        savanna:'🌾 사바나! 우기엔 초록, 건기엔 갈색이 되는 초원이에요. 사자·기린이 살아요!',
+        dry:'🏜️ 사막! 낮엔 50°C, 밤엔 10°C. 엄청난 일교차예요! 왜 비가 안 올까요?',
+        temperate:'🌸 온대! 우리나라가 바로 여기예요. 사계절이 뚜렷한 이유는 다음 챕터에서 알게 돼요!',
+        subarctic:'🌲 타이가 침엽수림! 겨울이 8개월이에요. 두꺼운 집이 필요한 이유는?',
+        polar:'🧊 한대 기후! 이글루는 왜 눈으로 만들었을까요? 단서를 찾아봐요!'
+      };
+      if(msgs[k]) addBot(msgs[k]);
+    } else {
+      selR=null; drawG(document.getElementById('svgLat'),latRot,'lat');
+    }
+  };
+  cliEl.appendChild(row); cliEl.appendChild(pop);
+});
+
+/* ══════════════════════════════════
+   경도
+══════════════════════════════════ */
+let lonRot=[0,0,0];
+function moveLon(s,reset=false){
+  if(reset) lonRot[0]=0; else lonRot[0]=lonRot[0]-s;
+  lonRot[0]=Math.round(lonRot[0]/15)*15;
+  rLon();
+}
+function rLon(){
+  drawG(document.getElementById('svgLon'),lonRot,'lon');
+  const d=((-lonRot[0])%360+360)%360, n=d>180?d-360:d;
+  updLon(n);
+}
+let lonDrag=false,lonLX=0,lonPX=0,lonRaf=null;
+(function(){
+  const svg=document.getElementById('svgLon');
+  const outer=document.getElementById('lonOuter');
+  [svg,outer].forEach(el=>{
+    if(!el)return;
+    el.addEventListener('mousedown',e=>{lonDrag=true;lonLX=e.clientX;e.preventDefault();},{passive:false});
+    el.addEventListener('touchstart',e=>{lonDrag=true;lonLX=e.touches[0].clientX;e.preventDefault();},{passive:false});
+  });
+  function flush(){lonRaf=null;lonRot[0]=lonRot[0]-lonPX*.42;lonPX=0;drawG(document.getElementById('svgLon'),lonRot,'lon');const d=((-lonRot[0])%360+360)%360,n=d>180?d-360:d;updLon(n);}
+  window.addEventListener('mousemove',e=>{if(!lonDrag)return;lonPX+=e.clientX-lonLX;lonLX=e.clientX;if(!lonRaf)lonRaf=requestAnimationFrame(flush);});
+  window.addEventListener('touchmove',e=>{if(!lonDrag)return;lonPX+=e.touches[0].clientX-lonLX;lonLX=e.touches[0].clientX;if(!lonRaf)lonRaf=requestAnimationFrame(flush);},{passive:true});
+  function snap(){lonDrag=false;lonRot[0]=Math.round(lonRot[0]/15)*15;rLon();}
+  window.addEventListener('mouseup',snap); window.addEventListener('touchend',snap);
+})();
+
+const CITIES=[
+  {n:'런던 🇬🇧',u:0,c:'#ff7043'},{n:'서울 🇰🇷',u:9,c:'#e91e8c'},
+  {n:'도쿄 🇯🇵',u:9,c:'#ab47bc'},{n:'베이징 🇨🇳',u:8,c:'#ef5350'},
+  {n:'뉴욕 🇺🇸',u:-5,c:'#42a5f5'},{n:'시드니 🇦🇺',u:10,c:'#26a69a'},
+  {n:'파리 🇫🇷',u:1,c:'#7e57c2'}
+];
+(function(){
+  const el=document.getElementById('cityList');
+  CITIES.forEach(c=>{
+    const h=((12+c.u)%24+24)%24;
+    const ds=(c.u>=0?'+':'')+c.u+'h';
+    el.innerHTML+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+      <span style="font-size:11px;color:#7986cb">${c.n}</span>
+      <div><span style="color:${c.c};font-weight:700;font-size:11px">${String(h).padStart(2,'0')}:00</span>
+        <span style="background:${c.c}22;color:${c.c};font-size:8px;font-weight:700;padding:1px 4px;border-radius:7px;margin-left:3px">${ds}</span>
+      </div></div>`;
+  });
+})();
+
+function updLon(lon){
+  const diff=Math.round(lon/15),h=((12+diff)%24+24)%24;
+  document.getElementById('lonTime').textContent=String(h).padStart(2,'0')+':00';
+  document.getElementById('lonDiff').textContent=(diff>=0?'+':'')+diff+'h';
+  let note='';
+  if(Math.abs(diff-9)<1) note='🇰🇷 서울! 런던 정오 → 서울 밤 9시';
+  else if(diff===0) note='📍 기준 경선 (런던과 같은 시각)';
+  else if(Math.abs(diff)===12) note='📅 날짜변경선 근처!';
+  else if(diff>0) note=`동쪽 — 런던보다 ${diff}시간 빨라요`;
+  else note=`서쪽 — 런던보다 ${Math.abs(diff)}시간 느려요`;
+  document.getElementById('lonNote').textContent=note;
+}
+
+// 시차 계산기
+const TZD=[
+  {n:'하와이 🇺🇸',u:-10},{n:'로스앤젤레스 🇺🇸',u:-8},{n:'시카고 🇺🇸',u:-6},
+  {n:'뉴욕/워싱턴 🇺🇸',u:-5},{n:'런던 🇬🇧',u:0},{n:'파리/베를린 🇪🇺',u:1},
+  {n:'모스크바 🇷🇺',u:3},{n:'두바이 🇦🇪',u:4},{n:'인도 🇮🇳',u:5.5},
+  {n:'방콕 🇹🇭',u:7},{n:'베이징/싱가포르 🇨🇳',u:8},{n:'도쿄 🇯🇵',u:9},
+  {n:'시드니 🇦🇺',u:10},{n:'뉴질랜드 🇳🇿',u:12}
+];
+(function(){
+  const s=document.getElementById('tzSel');
+  TZD.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.n+' (UTC'+(t.u>=0?'+':'')+t.u+')';s.appendChild(o);});
+})();
+function calcTZ(){
+  const idx=parseInt(document.getElementById('tzSel').value);
+  if(isNaN(idx)) return;
+  showTZ(TZD[idx]);
+}
+function calcTZM(){
+  const v=parseFloat(document.getElementById('tzInput').value);
+  if(isNaN(v)) return;
+  showTZ({n:`UTC${v>=0?'+':''}${v}`,u:v});
+}
+function showTZ(t){
+  const diff=t.u-9,h=((12+diff)%24+24)%24,m=t.u%1!==0?30:0;
+  document.getElementById('tzResult').style.display='block';
+  document.getElementById('tzCity').textContent=t.n;
+  document.getElementById('tzDN').textContent=t.n.split(' ')[0];
+  document.getElementById('tzDT').textContent=String(Math.floor(h)).padStart(2,'0')+':'+(m===0?'00':'30');
+  const dc=diff===0?'#4caf50':diff>0?'#ef5350':'#42a5f5';
+  document.getElementById('tzDiff').style.color=dc;
+  document.getElementById('tzDT').style.color=dc;
+  const ds=diff===0?'🟰 서울과 동일':(diff>0?`⬆️ 서울보다 ${diff}시간 빠름`:`⬇️ 서울보다 ${Math.abs(diff)}시간 느림`);
+  document.getElementById('tzDiff').textContent=ds;
+  addBot(`${t.n}은 서울(UTC+9) 대비 ${ds}이에요! 서울 12시 기준으로는 ${String(Math.floor(h)).padStart(2,'0')}:${m===0?'00':'30'}이에요.`);
+}
+
+/* ══════════════════════════════════
+   태양 Canvas (가로형)
+══════════════════════════════════ */
+let sunRaf=null, sunLat=0, sunPh=0;
+const DPR=Math.min(window.devicePixelRatio||1,2.5);
+function initSunC(){
+  const c=document.getElementById('sunCvs');
+  if(!c) return;
+  const pw=c.parentElement.clientWidth||280;
+  const ph=Math.round(pw*.25);
+  c.width=pw*DPR; c.height=ph*DPR;
+  c.style.height=ph+'px';
+  c.getContext('2d').scale(DPR,DPR);
+}
+function drawSunC(lat){
+  sunLat=lat;
+  const c=document.getElementById('sunCvs');
+  if(!c||!c.width) return;
+  const ctx=c.getContext('2d');
+  const W=c.width/DPR,H=c.height/DPR;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#04060f'; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<8;i++){ctx.beginPath();ctx.arc((Math.sin(i*37)*.4+.5)*W*.5,(Math.cos(i*53)*.4+.5)*H,.7,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.45)';ctx.fill();}
+  const elev=90-Math.abs(lat), elevR=elev*Math.PI/180;
+  const sX=W*.09,sY=H*.5,sR=Math.min(W,H)*.14;
+  // 태양 글로우
+  const sg=ctx.createRadialGradient(sX,sY,0,sX,sY,sR*2.2);
+  sg.addColorStop(0,'rgba(255,215,40,.95)');sg.addColorStop(.45,'rgba(255,175,0,.4)');sg.addColorStop(1,'transparent');
+  ctx.fillStyle=sg;ctx.beginPath();ctx.arc(sX,sY,sR*2.2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#FFD700';ctx.beginPath();ctx.arc(sX,sY,sR,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#FFF9C4';ctx.beginPath();ctx.arc(sX-sR*.2,sY-sR*.2,sR*.35,0,Math.PI*2);ctx.fill();
+  // 회전 방사
+  ctx.strokeStyle='rgba(255,215,50,.5)';ctx.lineWidth=1;
+  for(let a=0;a<8;a++){const ang=a*Math.PI/4+sunPh;ctx.beginPath();ctx.moveTo(sX+Math.cos(ang)*(sR+1.5),sY+Math.sin(ang)*(sR+1.5));ctx.lineTo(sX+Math.cos(ang)*(sR+5),sY+Math.sin(ang)*(sR+5));ctx.stroke();}
+  // 지구
+  const eX=W*.83,eY=H*.5,eR=H*.32;
+  const eg=ctx.createRadialGradient(eX-eR*.2,eY-eR*.2,0,eX,eY,eR);
+  eg.addColorStop(0,'#4fc3f7');eg.addColorStop(.5,'#1565c0');eg.addColorStop(1,'#0d47a1');
+  ctx.fillStyle=eg;ctx.beginPath();ctx.arc(eX,eY,eR,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#2e7d32';
+  ctx.beginPath();ctx.ellipse(eX-eR*.08,eY-eR*.1,eR*.28,eR*.19,.3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(eX+eR*.16,eY+eR*.1,eR*.19,eR*.16,-.3,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(100,180,255,.2)';ctx.lineWidth=.7;ctx.beginPath();ctx.arc(eX,eY,eR,0,Math.PI*2);ctx.stroke();
+  // 광선 — 위도에 따라 각도/분산 변화
+  const spread=1-Math.sin(elevR); // elev=90→0집중, elev=0→퍼짐
+  for(let i=0;i<4;i++){
+    const t=(i/3)-.5;
+    const tY=eY+t*eR*(0.2+spread*1.5);
+    const tX=eX-Math.sqrt(Math.max(0,eR*eR-(tY-eY)*(tY-eY)))*.88;
+    const sXs=sX+sR*1.1, sYs=eY-spread*H*.38+t*eR*.12;
+    const alpha=0.25+Math.sin(elevR)*.65;
+    const rg=ctx.createLinearGradient(sXs,sYs,tX,tY);
+    rg.addColorStop(0,`rgba(255,215,40,${alpha*.35})`);rg.addColorStop(1,`rgba(255,195,25,${alpha})`);
+    ctx.save();ctx.beginPath();ctx.moveTo(sXs,sYs);ctx.lineTo(tX,tY);
+    ctx.strokeStyle=rg;ctx.lineWidth=(i===1||i===2)?2.6:1.6;ctx.stroke();
+    const vx=tX-sXs,vy=tY-sYs,vl=Math.sqrt(vx*vx+vy*vy);
+    if(vl>4){const nx=vx/vl,ny=vy/vl;ctx.beginPath();ctx.fillStyle='rgba(255,155,0,.85)';ctx.moveTo(tX,tY);ctx.lineTo(tX-nx*6+ny*2.5,tY-ny*6-nx*2.5);ctx.lineTo(tX-nx*6-ny*2.5,tY-ny*6+nx*2.5);ctx.closePath();ctx.fill();}
+    ctx.restore();
+  }
+  // 지면 열
+  const ht=Math.sin(elevR);
+  const hg=ctx.createRadialGradient(eX-eR*.7,eY,0,eX-eR*.7,eY,eR*.65);
+  hg.addColorStop(0,`rgba(255,50,0,${.5*ht})`);hg.addColorStop(1,'transparent');
+  ctx.fillStyle=hg;ctx.beginPath();ctx.arc(eX-eR*.7,eY,eR*.65,0,Math.PI*2);ctx.fill();
+}
+function sunLoop(){sunPh+=.035;drawSunC(sunLat);sunRaf=requestAnimationFrame(sunLoop);}
+function startSun(){if(sunRaf)cancelAnimationFrame(sunRaf);initSunC();sunLoop();}
+function stopSun(){if(sunRaf){cancelAnimationFrame(sunRaf);sunRaf=null;}}
+
+/* ══════════════════════════════════
+   계절 Canvas
+══════════════════════════════════ */
+const MNS=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+let seaCtx=null,seaW=280,seaH=200;
+function initSea(){
+  const wrap=document.getElementById('seaWrap'),cvs=document.getElementById('seaCvs');
+  if(!wrap||!cvs) return;
+  seaW=Math.max(240,wrap.clientWidth);seaH=Math.round(seaW*.68);
+  cvs.width=seaW*DPR;cvs.height=seaH*DPR;cvs.style.height=seaH+'px';
+  seaCtx=cvs.getContext('2d');seaCtx.scale(DPR,DPR);
+}
+function gNS(m){m=+m;if([3,4,5].includes(m))return{n:'봄 🌸',c:'#f48fb1',bg:'rgba(233,30,99,.12)'};if([6,7,8].includes(m))return{n:'여름 ☀️',c:'#ffd54f',bg:'rgba(255,152,0,.12)'};if([9,10,11].includes(m))return{n:'가을 🍂',c:'#ffb74d',bg:'rgba(230,81,0,.12)'};return{n:'겨울 ❄️',c:'#90caf9',bg:'rgba(21,101,192,.12)'};}
+function gSS(m){m=+m;if([9,10,11].includes(m))return{n:'봄 🌸',c:'#f48fb1',bg:'rgba(233,30,99,.12)'};if([12,1,2].includes(m))return{n:'여름 ☀️',c:'#ffd54f',bg:'rgba(255,152,0,.12)'};if([3,4,5].includes(m))return{n:'가을 🍂',c:'#ffb74d',bg:'rgba(230,81,0,.12)'};return{n:'겨울 ❄️',c:'#90caf9',bg:'rgba(21,101,192,.12)'};}
+function doSea(m){
+  m=+m;if(!seaCtx)initSea();
+  document.getElementById('seaMonV').textContent=MNS[m-1];
+  const W=seaW,H=seaH,ctx=seaCtx;
+  ctx.clearRect(0,0,W,H);
+  const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H));
+  bg.addColorStop(0,'#0a0f2a');bg.addColorStop(1,'#02040e');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  for(let i=0;i<50;i++){ctx.beginPath();ctx.arc((Math.sin(i*41.3)*.5+.5)*W,(Math.cos(i*57.7)*.5+.5)*H,i%7===0?1:.5,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${.2+Math.sin(i*3)*.15})`;ctx.fill();}
+  const cx=W/2,cy=H/2,rx=W*.26,ry=H*.23;
+  ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.strokeStyle='rgba(80,120,255,.12)';ctx.lineWidth=1.5;ctx.setLineDash([4,6]);ctx.stroke();ctx.setLineDash([]);
+  const ang=((m-1)/12)*Math.PI*2-Math.PI/2,ex=cx+Math.cos(ang)*rx,ey=cy+Math.sin(ang)*ry;
+  const sR=Math.min(W,H)*.11;
+  const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,sR*1.6);
+  sg.addColorStop(0,'#fffde7');sg.addColorStop(.35,'#ffd54f');sg.addColorStop(.7,'rgba(255,140,0,.3)');sg.addColorStop(1,'transparent');
+  ctx.fillStyle=sg;ctx.beginPath();ctx.arc(cx,cy,sR*1.6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff9c4';ctx.beginPath();ctx.arc(cx,cy,sR*.7,0,Math.PI*2);ctx.fill();
+  const sFs=Math.max(9,Math.round(W*.038));
+  ctx.fillStyle='#444';ctx.font=`bold ${sFs}px Noto Sans KR`;ctx.textAlign='center';ctx.fillText('태양',cx,cy+sFs*.35);
+  const ar=23.5*Math.PI/180,eR=Math.min(W,H)*.068,al=eR*1.65;
+  ctx.beginPath();ctx.strokeStyle='#ff5252';ctx.lineWidth=1.8;ctx.moveTo(ex-Math.sin(ar)*al,ey-Math.cos(ar)*al);ctx.lineTo(ex+Math.sin(ar)*al,ey+Math.cos(ar)*al);ctx.stroke();
+  const ts=Math.atan2(cy-ey,cx-ex);
+  const dg=ctx.createRadialGradient(ex,ey,0,ex,ey,eR);
+  dg.addColorStop(0,'#4fc3f7');dg.addColorStop(.5,'#1565c0');dg.addColorStop(1,'#0d47a1');
+  ctx.fillStyle=dg;ctx.beginPath();ctx.arc(ex,ey,eR,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.beginPath();ctx.arc(ex,ey,eR,0,Math.PI*2);ctx.clip();
+  const lg=ctx.createLinearGradient(ex+Math.cos(ts)*eR,ey+Math.sin(ts)*eR,ex-Math.cos(ts)*eR,ey-Math.sin(ts)*eR);
+  lg.addColorStop(0,'rgba(255,215,70,.7)');lg.addColorStop(.5,'rgba(255,215,70,.06)');lg.addColorStop(1,'rgba(0,0,0,.5)');
+  ctx.fillStyle=lg;ctx.fillRect(ex-eR*1.2,ey-eR*1.2,eR*2.4,eR*2.4);ctx.restore();
+  ctx.strokeStyle='rgba(80,150,255,.25)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(ex,ey,eR,0,Math.PI*2);ctx.stroke();
+  const eFs=Math.max(8,Math.round(W*.03));
+  ctx.fillStyle='#fff';ctx.font=`bold ${eFs}px Noto Sans KR`;ctx.textAlign='center';ctx.fillText('지구',ex,ey+eFs*.35);
+  const nS=gNS(m),sS=gSS(m);
+  const npx=ex-Math.sin(ar)*al,npy=ey-Math.cos(ar)*al,spx=ex+Math.sin(ar)*al,spy=ey+Math.cos(ar)*al;
+  const lFs=Math.max(10,Math.round(W*.038));
+  const PAD=lFs+4;
+  const cx2=x=>Math.max(PAD,Math.min(W-PAD,x)),cy2=y=>Math.max(PAD,Math.min(H-PAD,y));
+  ctx.font=`bold ${lFs}px Noto Sans KR`;ctx.textAlign='center';ctx.strokeStyle='rgba(0,0,0,.7)';ctx.lineWidth=2.2;
+  const nlx=cx2(npx+(npx<cx?-lFs*2.8:lFs*2.8)),nly=cy2(npy-lFs*1.2);
+  const slx=cx2(spx+(spx<cx?-lFs*2.8:lFs*2.8)),sly=cy2(spy+lFs*1.6);
+  ctx.strokeText('북:'+nS.n,nlx,nly);ctx.fillStyle=nS.c;ctx.fillText('북:'+nS.n,nlx,nly);
+  ctx.strokeText('남:'+sS.n,slx,sly);ctx.fillStyle=sS.c;ctx.fillText('남:'+sS.n,slx,sly);
+  const oFs=Math.max(8,Math.round(W*.033));
+  [{l:'봄',m:3,c:'#f48fb1'},{l:'여름',m:6,c:'#ffd54f'},{l:'가을',m:9,c:'#ffb74d'},{l:'겨울',m:12,c:'#90caf9'}].forEach(s=>{
+    const a=((s.m-1)/12)*Math.PI*2-Math.PI/2;
+    const lx=cx2(cx+Math.cos(a)*(rx+W*.062)),ly=cy2(cy+Math.sin(a)*(ry+H*.075));
+    ctx.fillStyle=s.c+'cc';ctx.font=`${oFs}px Noto Sans KR`;ctx.textAlign='center';ctx.fillText('북'+s.l,lx,ly);
+  });
+  document.getElementById('seaPair').innerHTML=[{h:'북반구 🌏',s:nS,cs:['한국','일본','유럽']},{h:'남반구 🌍',s:sS,cs:['호주','브라질','뉴질랜드']}].map(p=>`<div class="sea-mini" style="background:${p.s.bg};border-color:${p.s.c}55"><div style="font-size:10px;color:#37474f;margin-bottom:2px;font-weight:700">${p.h}</div><div style="font-size:20px;margin-bottom:2px">${p.s.n.split(' ')[1]}</div><div style="color:${p.s.c};font-weight:700;font-size:11px;font-family:'Jua'">${p.s.n}</div><div style="margin-top:4px;font-size:10px;color:#37474f;line-height:1.5">${p.cs.map(x=>'<div>'+x+'</div>').join('')}</div></div>`).join('');
+  document.getElementById('seaTips').innerHTML=['자전축 <b style="color:#ffd54f">23.5° 기울기</b>가 핵심!','북반구 여름(6~8월) = 남반구 겨울','호주는 12월~2월이 여름! 🏖️','<b style="color:#ffd54f">기울기+공전</b>이 계절의 원인!'].map(t=>`<div style="display:flex;gap:4px;margin-bottom:5px;align-items:flex-start"><span style="color:#7c4dff;font-size:10px;flex-shrink:0">✦</span><span style="color:#7986cb;font-size:11px;line-height:1.6">${t}</span></div>`).join('');
+}
+setTimeout(()=>{initSea();doSea(7);},300);
+
+/* ══════════════════════════════════
+   최종 퀴즈
+══════════════════════════════════ */
+const FQS=[
+  {q:'적도 근처가 1년 내내 더운 이유는?',c:['경도가 낮아서','햇빛이 수직으로 집중되어서','바다가 가까워서','고도가 낮아서'],a:1,e:'햇빛이 수직(90°)으로 집중! 단위 면적당 에너지가 가장 강해요.'},
+  {q:'경도 15° 차이 = 몇 시간?',c:['30분','1시간','2시간','3시간'],a:1,e:'360°÷24h=15°/h! 서울(동경135°)→135÷15=9→UTC+9'},
+  {q:'서울 21:00일 때 런던은?',c:['정오 12:00','오전 3:00','오전 9:00','다음날 새벽'],a:0,e:'서울UTC+9, 런던UTC+0 → 9시간 차이! 21-9=12(정오)'},
+  {q:'7월에 호주(남반구)는?',c:['봄','여름','가을','겨울'],a:3,e:'북반구가 여름이면 남반구는 겨울! 자전축 기울기 때문이에요.'},
+  {q:'이글루를 눈으로 만드는 이유는?',c:['눈이 예뻐서','재료가 풍부하고 단열 효과 때문에','시원해서','전통이라서'],a:1,e:'극지방엔 나무가 없고, 눈 블록 사이 공기층이 단열 역할을 해요!'},
+  {q:'위도 0°를 뭐라고 할까?',c:['본초자오선','적도','북회귀선','극권'],a:1,e:'위도 0°=적도! 지구에서 가장 볼록한 부분이에요.'},
+  {q:'날짜변경선 동→서로 건너면?',c:['하루 줄어듦','하루 늘어남','변화 없음','12시간 줄어듦'],a:1,e:'동→서로 건너면 시간이 뒤로 가기 때문에 하루가 늘어나요!'},
+  {q:'지구 자전축 기울기는?',c:['15°','23.5°','45°','66.5°'],a:1,e:'23.5°! 이 기울기 덕분에 계절이 생겨요. 안 기울어지면 계절이 없어요!'}
+];
+let fqi=0,fsc=0,fqa=false,fua=[];
+const NU=['①','②','③','④'];
+function renderFQ(){
+  const q=FQS[fqi];
+  document.getElementById('fqProg').textContent=(fqi+1)+'/'+FQS.length;
+  document.getElementById('fqBar').style.width=((fqi+1)/FQS.length*100)+'%';
+  document.getElementById('fqText').textContent='Q'+(fqi+1)+'. '+q.q;
+  document.getElementById('fqFb').style.display='none';
+  document.getElementById('fqNext').style.display='none';
+  fqa=false;
+  const cl=document.getElementById('fqChoices');cl.innerHTML='';
+  q.c.forEach((c,i)=>{const b=document.createElement('button');b.className='ev-opt';b.innerHTML=`<span class="ev-num">${NU[i]}</span>${c}`;b.onclick=()=>pickFQ(i);cl.appendChild(b);});
+}
+function pickFQ(idx){
+  if(fqa)return; fqa=true;
+  const q=FQS[fqi];
+  document.querySelectorAll('#fqChoices .ev-opt').forEach((b,i)=>{b.disabled=true;if(i===q.a){b.classList.add('ok');b.querySelector('.ev-num').textContent='✓';}else if(i===idx){b.classList.add('ng');b.querySelector('.ev-num').textContent='✗';}});
+  if(idx===q.a)fsc++;
+  fua.push({ok:idx===q.a});
+  if(idx===q.a) addPts(10);
+  const fb=document.getElementById('fqFb');fb.style.display='block';
+  fb.innerHTML=`<div class="fb-cosmo ${idx===q.a?'ok':'ng'}"><span style="font-size:17px">🤖</span><div class="fb-txt">${idx===q.a?'<b>증거 확보!</b>':'<b>틀렸어요!</b>'} ${q.e}</div></div>`;
+  const nb=document.getElementById('fqNext');nb.style.display='block';
+  nb.textContent=fqi<FQS.length-1?'다음 증거 →':'🔎 최종 판결!';
+}
+function nextFQ(){fqi++;if(fqi>=FQS.length)endFQ();else renderFQ();}
+function endFQ(){
+  document.getElementById('fqBody').style.display='none';
+  document.getElementById('fqEnd').style.display='block';
+  const p=fsc/FQS.length;
+  let em,rank,msg;
+  if(p>=.875){em='🕵️';rank='최고 탐정!';msg='완벽해요! 지구의 모든 비밀을 밝혔어요! 🏆';addPts(50);document.getElementById('cp3').classList.add('done');document.getElementById('cp3').textContent='✓';}
+  else if(p>=.625){em='🔍';rank='베테랑 탐정!';msg='대단해요! 조금 더 연습하면 최고 탐정이 될 거예요!';}
+  else{em='🕵️';rank='견습 탐정!';msg='앞 챕터를 복습하고 다시 도전해봐요!';}
+  document.getElementById('fqEm').textContent=em;
+  document.getElementById('fqRank').textContent=rank;
+  document.getElementById('fqScore').textContent=fsc+' / '+FQS.length;
+  document.getElementById('fqScore').style.color=p>=.875?'#ffd54f':'#90caf9';
+  document.getElementById('fqMsg').textContent=msg;
+  document.getElementById('fqBadges').innerHTML=fua.map(a=>`<div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;background:${a.ok?'rgba(76,175,80,.2)':'rgba(239,83,80,.15)'};border:1px solid ${a.ok?'#4caf50':'#ef5350'};color:${a.ok?'#4caf50':'#ef5350'}">${a.ok?'O':'X'}</div>`).join('');
+  document.getElementById('fqPts').textContent='+'+pts+'⭐';
+  addBot(p>=.875?'최고 탐정 달성! 🕵️ 지구의 모든 비밀을 밝혔어요! 대단해요!':'좋은 시도였어요! 💪 다시 도전해봐요. 넌 할 수 있어!');
+  showNotif();
+}
+function resetFQ(){fqi=0;fsc=0;fqa=false;fua=[];document.getElementById('fqBody').style.display='block';document.getElementById('fqEnd').style.display='none';renderFQ();}
+renderFQ();
+
+/* ══════════════════════════════════
+   AI 채팅 (Claude API)
+══════════════════════════════════ */
+let chatOpen=false, chatHistory=[];
+function toggleChat(){
+  chatOpen=!chatOpen;
+  document.getElementById('chatWrap').classList.toggle('open',chatOpen);
+  document.getElementById('chatNotif').style.display='none';
+  if(chatOpen && chatHistory.length===0){
+    addBot('안녕, 탐정! 🕵️ 저는 AI 파트너 코스모예요!\n위도, 경도, 기후, 시차에 대해 뭐든 물어봐요!\n예: "한대기후는 왜 이글루를 써요?" "뉴욕과 서울 시차는?"');
+  }
+}
+function showNotif(){if(!chatOpen){document.getElementById('chatNotif').style.display='flex';}}
+function addBot(txt){
+  const msgs=document.getElementById('chatMsgs');
+  const div=document.createElement('div');div.className='cm-bot';
+  div.innerHTML=txt.replace(/\n/g,'<br>');
+  msgs.appendChild(div);msgs.scrollTop=99999;
+  if(!chatOpen) showNotif();
+}
+async function sendChat(){
+  const inp=document.getElementById('chatTxt');
+  const txt=inp.value.trim();if(!txt)return;
+  inp.value='';
+  const msgs=document.getElementById('chatMsgs');
+  const ud=document.createElement('div');ud.className='cm-user';ud.textContent=txt;msgs.appendChild(ud);
+  chatHistory.push({role:'user',content:txt});
+  const typing=document.createElement('div');typing.className='typing';
+  typing.innerHTML='<div class="dots"><span></span><span></span><span></span></div>';
+  msgs.appendChild(typing);msgs.scrollTop=99999;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:800,
+        system:`너는 중1 사회 수업의 AI 탐정 파트너 '코스모'야. 학생들이 위도·경도·기후·계절·시차를 탐정처럼 탐구하는 게임에서 도움을 줘.
+규칙:
+1. 항상 탐정 말투로 친근하게 ("탐정님", "단서를 찾았군요!" 등)
+2. 중1 수준의 쉬운 언어, 이모지 적극 사용
+3. 정답을 바로 알려주기보다 단서를 단계별로 줘
+4. 칭찬을 아끼지 말고, 오답엔 격려해줘
+5. 반드시 한국어로만
+6. 3-4문장으로 간결하게`,
+        messages:chatHistory.slice(-8)
+      })
+    });
+    typing.remove();
+    const data=await r.json();
+    const reply=data.content&&data.content[0]?data.content[0].text:'잠시 후 다시 물어봐줘! 😅';
+    chatHistory.push({role:'assistant',content:reply});
+    addBot(reply);
+  }catch(e){typing.remove();addBot('연결 오류! 잠시 후 다시 시도해봐요 😅');}
+}
+
+/* ══════════════════════════════════
+   초기화
+══════════════════════════════════ */
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+  .then(r=>r.json()).then(t=>{
+    wF=topojson.feature(t,t.objects.countries).features;
+    init();
+  }).catch(()=>{wF=[];init();});
+
+function init(){
+  setupLat(); rLon(); startSun();
+  renderEv(0); renderEv(1); renderEv(2);
+  // 탭 잠금 아이콘
+  ['tab1','tab2','tab3'].forEach(id=>{
+    const t=document.getElementById(id);
+    if(t) t.innerHTML='🔒 '+t.textContent.trim();
+  });
+  setTimeout(()=>{
+    addBot('🕵️ 사건 파일 도착! 코스모의 기후 데이터가 도난당했어요!\n용의자 5개 도시: 나이로비·런던·서울·시드니·모스크바\n단서 3개를 모아 범인 도시를 특정하세요!');
+    showNotif();
+  },1200);
+}
+</script>
+</body>
+</html>

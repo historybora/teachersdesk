@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시험 출제 점검기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue:    #2563EB;
+  --blue-d:  #1D4ED8;
+  --blue-l:  #EFF6FF;
+  --green:   #16A34A;
+  --green-l: #F0FDF4;
+  --red:     #DC2626;
+  --red-l:   #FEF2F2;
+  --yellow:  #D97706;
+  --yellow-l:#FFFBEB;
+  --gray-50: #F9FAFB;
+  --gray-100:#F3F4F6;
+  --gray-200:#E5E7EB;
+  --gray-300:#D1D5DB;
+  --gray-400:#9CA3AF;
+  --gray-500:#6B7280;
+  --gray-600:#4B5563;
+  --gray-700:#374151;
+  --gray-800:#1F2937;
+  --gray-900:#111827;
+  --radius:  12px;
+  --shadow:  0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg:0 4px 6px rgba(0,0,0,.07), 0 10px 40px rgba(0,0,0,.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: #F0F4FF;
+  color: var(--gray-800);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 헤더 ── */
+.hdr {
+  background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 60%, #3B82F6 100%);
+  padding: 28px 24px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.hdr::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hdr-inner { max-width: 780px; margin: 0 auto; position: relative; }
+.hdr-top { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.hdr-badge {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.hdr-title { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+.hdr-sub { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+.hdr-notice {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px; color: rgba(255,255,255,0.8);
+  display: flex; gap: 8px; align-items: flex-start;
+}
+
+/* ── 본문 ── */
+.wrap { max-width: 780px; margin: 0 auto; padding: 28px 16px 60px; }
+
+/* ── 스텝 카드 ── */
+.card {
+  background: #fff;
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-200);
+  padding: 20px 22px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+.card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.step-num.done { background: var(--green); }
+.step-label { font-size: 15px; font-weight: 700; color: var(--gray-800); }
+.step-desc { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
+
+/* ── API 섹션 ── */
+.api-toggle {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; padding: 10px 0 10px;
+  font-size: 13px; color: var(--gray-500);
+  user-select: none;
+}
+.api-toggle .arrow { transition: transform .2s; font-size: 10px; }
+.api-toggle.open .arrow { transform: rotate(90deg); }
+.api-section { display: none; margin-top: 2px; }
+.api-section.open { display: block; }
+.api-row { display: flex; gap: 8px; }
+.api-inp {
+  flex: 1; padding: 9px 12px;
+  border: 1px solid var(--gray-200); border-radius: 8px;
+  font-size: 13px; font-family: monospace; outline: none;
+  transition: border .15s; background: var(--gray-50);
+}
+.api-inp:focus { border-color: var(--blue); background: #fff; }
+.btn-xs {
+  padding: 9px 13px; border: 1px solid var(--gray-200);
+  border-radius: 8px; background: var(--gray-100);
+  font-size: 12px; cursor: pointer; color: var(--gray-600);
+  font-family: inherit; flex-shrink: 0;
+}
+.btn-xs:hover { background: var(--gray-200); }
+.api-note { font-size: 11px; color: var(--gray-400); margin-top: 6px; }
+
+/* ── 업로드 그리드 ── */
+.up-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media(max-width:500px){ .up-grid { grid-template-columns: 1fr; } }
+.upzone {
+  border: 2px dashed var(--gray-300);
+  border-radius: 10px; padding: 22px 14px;
+  text-align: center; cursor: pointer;
+  transition: all .18s; background: var(--gray-50);
+  position: relative;
+}
+.upzone:hover, .upzone.drag {
+  border-color: var(--blue); background: var(--blue-l);
+}
+.upzone.ok {
+  border-color: var(--green); background: var(--green-l);
+  border-style: solid;
+}
+.upzone-icon { font-size: 28px; margin-bottom: 7px; }
+.upzone-name { font-size: 12px; font-weight: 700; color: var(--gray-500); margin-bottom: 3px; }
+.upzone.ok .upzone-name { color: var(--green); }
+.upzone-file { font-size: 11px; color: var(--gray-400); word-break: break-all; }
+.upzone-hint { font-size: 11px; color: var(--gray-300); margin-top: 4px; }
+
+/* ── 메인 버튼 ── */
+.btn-main {
+  width: 100%; padding: 14px;
+  border-radius: 10px; border: none;
+  background: var(--gray-200); color: var(--gray-400);
+  font-size: 15px; font-weight: 700;
+  cursor: not-allowed; transition: all .18s;
+  font-family: inherit; letter-spacing: -0.2px;
+  margin-bottom: 6px;
+}
+.btn-main.on {
+  background: linear-gradient(135deg, var(--blue), var(--blue-d));
+  color: #fff; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37,99,235,.35);
+}
+.btn-main.on:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,.4); }
+.btn-main.on:active { transform: translateY(0); }
+
+/* ── 로딩 ── */
+.loading {
+  display: none; text-align: center;
+  padding: 36px 0; color: var(--gray-500); font-size: 13px;
+}
+.spin { font-size: 30px; display: inline-block; animation: sp 1s linear infinite; margin-bottom: 10px; }
+@keyframes sp { to { transform: rotate(360deg); } }
+.loading-sub { font-size: 11.5px; color: var(--gray-400); margin-top: 5px; }
+
+/* ── 에러 ── */
+.err-box {
+  display: none;
+  background: var(--red-l); border: 1px solid #FECACA;
+  border-radius: 10px; padding: 14px 16px;
+  color: var(--red); font-size: 13px; line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+/* ── 결과 영역 ── */
+.result { display: none; }
+
+/* 요약 배너 */
+.summary-banner {
+  border-radius: var(--radius); padding: 20px 22px;
+  margin-bottom: 16px; display: flex;
+  gap: 16px; align-items: center; flex-wrap: wrap;
+  border: 1px solid;
+}
+.summary-banner.good { background: var(--green-l); border-color: #BBF7D0; }
+.summary-banner.warn { background: #FFF7ED; border-color: #FED7AA; }
+.summary-banner.bad  { background: var(--red-l);  border-color: #FECACA; }
+.summary-icon { font-size: 36px; flex-shrink: 0; }
+.summary-main { flex: 1; min-width: 160px; }
+.summary-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+.summary-title.good { color: var(--green); }
+.summary-title.warn { color: var(--yellow); }
+.summary-title.bad  { color: var(--red); }
+.summary-desc { font-size: 13px; color: var(--gray-600); line-height: 1.6; }
+.summary-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 600; border: 1px solid;
+}
+
+/* 결과 액션바 */
+.result-actions { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 14px; }
+.btn-action {
+  display: flex; align-items: center; gap: 5px;
+  padding: 7px 14px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: all .15s;
+}
+.btn-action.print {
+  border: 1.5px solid var(--blue); background: #fff; color: var(--blue);
+}
+.btn-action.print:hover { background: var(--blue-l); }
+.btn-action.copy {
+  border: 1.5px solid var(--gray-300); background: #fff; color: var(--gray-600);
+}
+.btn-action.copy:hover { background: var(--gray-100); }
+
+/* 섹션 헤더 */
+.sec-hdr {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 700; color: var(--gray-700);
+  margin: 18px 0 10px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.sec-count {
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  margin-left: auto;
+}
+
+/* 체크 항목 */
+.check-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 13px 15px; border-radius: 10px;
+  border: 1px solid; margin-bottom: 7px;
+  transition: box-shadow .15s;
+}
+.check-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.check-item.ok     { background: var(--green-l); border-color: #BBF7D0; }
+.check-item.warn   { background: #FFF7ED;         border-color: #FED7AA; }
+.check-item.error  { background: var(--red-l);    border-color: #FECACA; }
+.check-item.info   { background: var(--blue-l);   border-color: #BFDBFE; }
+.ci-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+.ci-body { flex: 1; min-width: 0; }
+.ci-top { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; flex-wrap: wrap; }
+.ci-label { font-size: 13px; font-weight: 700; }
+.ci-label.ok    { color: var(--green); }
+.ci-label.warn  { color: var(--yellow); }
+.ci-label.error { color: var(--red); }
+.ci-label.info  { color: var(--blue); }
+.ci-badge {
+  font-size: 10.5px; font-weight: 600; padding: 2px 8px;
+  border-radius: 20px; border: 1px solid; margin-left: auto;
+}
+.ci-badge.ok    { background: #D1FAE5; color: var(--green);  border-color: #A7F3D0; }
+.ci-badge.warn  { background: #FEF3C7; color: var(--yellow); border-color: #FDE68A; }
+.ci-badge.error { background: #FEE2E2; color: var(--red);    border-color: #FECACA; }
+.ci-badge.info  { background: #DBEAFE; color: var(--blue);   border-color: #BFDBFE; }
+.ci-note { font-size: 12px; color: var(--gray-600); line-height: 1.6; }
+.ci-detail {
+  margin-top: 6px; padding: 7px 10px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 7px; font-size: 12px;
+  color: var(--gray-700); line-height: 1.65;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* 수동 체크리스트 */
+.manual-card { background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 20px 22px; margin-top: 14px; box-shadow: var(--shadow); }
+.manual-progress { height: 4px; background: var(--gray-100); border-radius: 4px; margin: 10px 0 16px; overflow: hidden; }
+.manual-bar { height: 100%; background: linear-gradient(90deg, var(--green), #4ADE80); border-radius: 4px; transition: width .3s; }
+.m-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 13px; border-radius: 9px;
+  cursor: pointer; transition: all .15s;
+  border: 1px solid transparent; margin-bottom: 6px;
+  background: var(--gray-50);
+}
+.m-item:hover { background: var(--blue-l); border-color: #BFDBFE; }
+.m-item.done { background: var(--green-l); border-color: #BBF7D0; }
+.m-cb {
+  width: 20px; height: 20px; border-radius: 6px;
+  border: 2px solid var(--gray-300);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all .15s; font-size: 11px;
+}
+.m-item.done .m-cb { background: var(--green); border-color: var(--green); color: #fff; }
+.m-txt { font-size: 13px; color: var(--gray-600); flex: 1; }
+.m-item.done .m-txt { color: var(--green); font-weight: 500; text-decoration: line-through; text-decoration-color: #86EFAC; }
+
+/* 인쇄 전용 */
+.print-hdr { display: none; }
+.footer-note {
+  text-align: center; font-size: 11px; color: var(--gray-300);
+  margin-top: 24px; padding: 10px;
+}
+.footer-credit {
+  text-align: center; font-size: 11.5px; color: var(--gray-400);
+  margin-top: 8px; padding-bottom: 16px;
+}
+
+/* ── 인쇄 ── */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { background: #fff !important; }
+  .no-print { display: none !important; }
+  .print-hdr { display: block !important; }
+  .result { display: block !important; }
+  .manual-card { display: none; }
+  .wrap { padding: 10px !important; }
+  .check-item, .ci-detail { break-inside: avoid; }
+  .footer-credit { display: block !important; }
+  .hdr { display: none; }
+  .footer-note { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="hdr">
+  <div class="hdr-inner">
+    <div class="hdr-top">
+      <div class="hdr-badge">📋</div>
+      <div>
+        <div class="hdr-title">시험 출제 점검기</div>
+        <div class="hdr-sub">시험지 × 문항정보표 자동 비교 분석 · 출제 오류 즉시 발견</div>
+      </div>
+    </div>
+    <div class="hdr-notice">
+      <span style="font-size:13px;flex-shrink:0">🔒</span>
+      <span>업로드된 파일은 <strong style="color:#fff">브라우저 내에서만 처리</strong>되며 서버에 전송·저장되지 않습니다. 창을 닫으면 즉시 삭제됩니다.</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- STEP 1: 파일 업로드 -->
+  <div class="card no-print">
+    <div class="card-head">
+      <div class="step-num" id="sn1">1</div>
+      <div>
+        <div class="step-label">파일 업로드</div>
+        <div class="step-desc">시험지 원안과 문항정보표 PDF를 올려주세요</div>
+      </div>
+    </div>
+    <div class="up-grid">
+      <div class="upzone" id="z1"
+        onclick="document.getElementById('f1').click()"
+        ondragover="dzEv(event,'z1',true)" ondragleave="dzEv(event,'z1',false)"
+        ondrop="dzDrop(event,'z1',1)">
+        <input type="file" id="f1" accept=".pdf" style="display:none" onchange="filePicked(this,1)">
+        <div class="upzone-icon" id="zi1">📄</div>
+        <div class="upzone-name" id="zn1">시험지 원안 PDF</div>
+        <div class="upzone-file" id="zf1"></div>
+        <div class="upzone-hint">클릭 또는 드래그&드롭</div>
+      </div>
+      <div class="upzone" id="z2"
+        onclick="document.getElementById('f2').click()"
+        ondragover="dzEv(event,'z2',true)" ondragleave="dzEv(event,'z2',false)"
+        ondrop="dzDrop(event,'z2',2)">
+        <input type="file" id="f2" accept=".pdf" style="display:none" onchange="filePicked(this,2)">
+        <div class="upzone-icon" id="zi2">📋</div>
+        <div class="upzone-name" id="zn2">문항정보표 PDF</div>
+        <div class="upzone-file" id="zf2"></div>
+        <div class="upzone-hint">클릭 또는 드래그&드롭</div>
+      </div>
+    </div>
+
+    <!-- AI 옵션 (선택) -->
+    <div style="margin-top:14px; border-top:1px solid var(--gray-100); padding-top:12px;">
+      <div class="api-toggle" id="apiToggle" onclick="toggleApi()">
+        <span class="arrow">▶</span>
+        <span>✨ AI 심화 분석 사용하기 <span style="font-size:11px;color:var(--gray-300)">(선택사항 · Gemini API 키 필요)</span></span>
+      </div>
+      <div class="api-section" id="apiSection">
+        <div class="api-row">
+          <input class="api-inp" type="password" id="apiKey" placeholder="Gemini API 키 입력 (AIza...)">
+          <button class="btn-xs" onclick="toggleKeyVis()">보기</button>
+        </div>
+        <div class="api-note">🔑 aistudio.google.com에서 무료 발급 · 이 창에만 임시 저장됨</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: 점검 버튼 -->
+  <button class="btn-main no-print" id="goBtn" onclick="run()" disabled>
+    🔍 점검 시작하기
+  </button>
+
+  <div class="loading no-print" id="loading">
+    <div class="spin">⚙️</div>
+    <div style="font-weight:600;color:var(--gray-700)">PDF를 분석하고 있습니다...</div>
+    <div class="loading-sub" id="loadingMsg">텍스트 추출 중...</div>
+  </div>
+  <div class="err-box no-print" id="errBox"></div>
+
+  <!-- STEP 3: 결과 -->
+  <div class="result" id="result">
+
+    <!-- 인쇄 헤더 -->
+    <div class="print-hdr" style="margin-bottom:16px;padding-bottom:14px;border-bottom:2px solid var(--blue);">
+      <div style="font-size:20px;font-weight:800;color:var(--blue);">시험 출제 점검 결과</div>
+      <div id="pFiles" style="font-size:12px;color:var(--gray-500);margin-top:4px;"></div>
+      <div id="pDate"  style="font-size:11px;color:var(--gray-400);margin-top:2px;"></div>
+    </div>
+
+    <!-- 요약 배너 -->
+    <div class="summary-banner" id="sumBanner">
+      <div class="summary-icon" id="sumIcon"></div>
+      <div class="summary-main">
+        <div class="summary-title" id="sumTitle"></div>
+        <div class="summary-desc"  id="sumDesc"></div>
+      </div>
+      <div class="summary-chips" id="sumChips"></div>
+    </div>
+
+    <!-- 액션 버튼 -->
+    <div class="result-actions no-print">
+      <button class="btn-action copy" onclick="copyResult()">📋 텍스트 복사</button>
+      <button class="btn-action print" onclick="window.print()">🖨️ 인쇄</button>
+    </div>
+
+    <!-- 비교 검토 섹션 -->
+    <div class="sec-hdr">
+      <span>⚖️</span> 시험지 × 문항정보표 비교 검토
+      <span class="sec-count" id="cmpCount"></span>
+    </div>
+    <div id="cmpList"></div>
+
+    <!-- 시험지 자체 검토 -->
+    <div class="sec-hdr">
+      <span>📄</span> 시험지 자체 점검
+      <span class="sec-count" id="examCount"></span>
+    </div>
+    <div id="examList"></div>
+
+    <!-- 문항정보표 자체 검토 -->
+    <div class="sec-hdr">
+      <span>📋</span> 문항정보표 자체 점검
+      <span class="sec-count" id="tableCount"></span>
+    </div>
+    <div id="tableList"></div>
+
+    <!-- AI 결과 (있을 때만) -->
+    <div id="aiSection" style="display:none">
+      <div class="sec-hdr">
+        <span>✨</span> AI 심화 분석
+        <span class="sec-count" id="aiCount" style="background:#EDE9FE;color:#6D28D9;"></span>
+      </div>
+      <div id="aiList"></div>
+    </div>
+
+    <div class="footer-note no-print">🔒 결과는 저장되지 않으며 새로고침 시 사라집니다.</div>
+  </div>
+
+  <!-- 수동 체크리스트 -->
+  <div class="manual-card no-print">
+    <div class="card-head" style="margin-bottom:4px">
+      <div class="step-num" style="background:var(--gray-400)">✓</div>
+      <div>
+        <div class="step-label">최종 확인 체크리스트</div>
+        <div class="step-desc">자동 검토 외에 직접 눈으로 확인해야 할 항목</div>
+      </div>
+      <span id="mPct" style="margin-left:auto;font-size:12px;font-weight:600;color:var(--gray-400);"></span>
+    </div>
+    <div class="manual-progress"><div class="manual-bar" id="mBar" style="width:0%"></div></div>
+    <div id="mList"></div>
+  </div>
+
+  <div class="footer-credit">
+    만든이 : 보라쌤 &amp; 역사를 보라
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ══ 상태 ══ */
+let pdf1 = null, pdf2 = null;
+let text1 = '', text2 = '';
+let mState = [];
+
+const MANUAL_ITEMS = [
+  "교육과정 성취기준 반영 여부",
+  "문항 길이 과도 여부 (풀이 시간 고려)",
+  "전년도 문항 중복 여부 직접 확인",
+  "공동 출제 교사 협의 완료",
+  "보안 USB 저장 및 비밀번호 설정",
+  "공용 PC에 파일 잔존 여부 확인",
+];
+mState = new Array(MANUAL_ITEMS.length).fill(false);
+
+/* ══ PDF 드래그 ══ */
+function dzEv(e, id, on) { e.preventDefault(); document.getElementById(id).classList.toggle('drag', on); }
+function dzDrop(e, id, n) {
+  e.preventDefault(); document.getElementById(id).classList.remove('drag');
+  const f = e.dataTransfer.files[0]; if (f) applyFile(f, n);
+}
+function filePicked(inp, n) { if (inp.files[0]) applyFile(inp.files[0], n); }
+
+function applyFile(f, n) {
+  if (!f.name.toLowerCase().endsWith('.pdf')) { showErr('PDF 파일만 업로드 가능합니다.'); return; }
+  if (n === 1) pdf1 = f; else pdf2 = f;
+  const z = document.getElementById('z'+n);
+  z.classList.add('ok');
+  document.getElementById('zi'+n).textContent = '✅';
+  document.getElementById('zn'+n).textContent = n===1 ? '시험지 원안' : '문항정보표';
+  document.getElementById('zf'+n).textContent = f.name.length>32 ? f.name.slice(0,30)+'…' : f.name;
+  document.getElementById('sn'+n).classList.add('done');
+  chkReady();
+}
+
+function chkReady() {
+  const ok = !!(pdf1 && pdf2);
+  const btn = document.getElementById('goBtn');
+  btn.disabled = !ok;
+  btn.classList.toggle('on', ok);
+}
+
+/* ══ API 토글 ══ */
+function toggleApi() {
+  const t = document.getElementById('apiToggle');
+  const s = document.getElementById('apiSection');
+  t.classList.toggle('open');
+  s.classList.toggle('open');
+}
+function toggleKeyVis() {
+  const inp = document.getElementById('apiKey');
+  const btn = event.target;
+  inp.type = inp.type==='password'?'text':'password';
+  btn.textContent = inp.type==='password'?'보기':'숨기기';
+}
+
+/* ══ PDF 텍스트 추출 ══ */
+async function extractText(file) {
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+  let full = '';
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const tc = await page.getTextContent();
+    full += tc.items.map(i => i.str).join(' ') + '\n';
+  }
+  return full;
+}
+
+/* ══ 파싱 유틸 ══ */
+function parseQuestionNums(text) {
+  // 1. 2. 3. 또는 [1] [2] 형태 추출
+  const patterns = [
+    /(?:^|\n|\s)(\d{1,2})\s*[.．]\s+[가-힣A-Za-z①-⑤]/gm,
+    /(?:^|\n|\s)\[(\d{1,2})\]/gm,
+    /(?:^|\n)(\d{1,2})\s*[.．]/gm,
+  ];
+  const nums = new Set();
+  for (const re of patterns) {
+    let m;
+    const r = new RegExp(re.source, re.flags);
+    while ((m = r.exec(text)) !== null) {
+      const n = parseInt(m[1]);
+      if (n >= 1 && n <= 60) nums.add(n);
+    }
+  }
+  return [...nums].sort((a,b)=>a-b);
+}
+
+function parseScores(text) {
+  // [3점] (2점) 3점 형태
+  const re = /[\[（(]?\s*(\d{1,2})\s*점\s*[\]）)]/g;
+  const scores = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const v = parseInt(m[1]);
+    if (v >= 1 && v <= 20) scores.push(v);
+  }
+  return scores;
+}
+
+function parseAnswers(text) {
+  // 정답: ③ 또는 답: 3 형태
+  const re = /(?:정답|답)\s*[:：]\s*([①②③④⑤1-5])/g;
+  const ans = [];
+  let m;
+  while ((m = re.exec(text)) !== null) ans.push(m[1]);
+  return ans;
+}
+
+function circledToNum(c) {
+  const map = {'①':1,'②':2,'③':3,'④':4,'⑤':5};
+  return map[c] || parseInt(c) || 0;
+}
+
+function findMissingNums(arr) {
+  if (!arr.length) return [];
+  const max = Math.max(...arr);
+  const missing = [];
+  for (let i = 1; i <= max; i++) {
+    if (!arr.includes(i)) missing.push(i);
+  }
+  return missing;
+}
+
+function detectDuplicates(arr) {
+  const seen = new Set(), dups = new Set();
+  arr.forEach(n => { if (seen.has(n)) dups.add(n); else seen.add(n); });
+  return [...dups];
+}
+
+function detectAnswerPattern(answers) {
+  // 3개 이상 동일 번호 연속
+  const patterns = [];
+  for (let i = 0; i <= answers.length - 3; i++) {
+    const a = circledToNum(answers[i]);
+    const b = circledToNum(answers[i+1]);
+    const c = circledToNum(answers[i+2]);
+    if (a === b && b === c && a > 0) {
+      patterns.push({ start: i+1, num: a, len: 3 });
+    }
+  }
+  return patterns;
+}
+
+function countNegative(text) {
+  const re = /옳지\s*않[은은]/g;
+  const re2 = /아닌\s*것/g;
+  const re3 = /틀린\s*것/g;
+  const re4 = /거리가\s*먼/g;
+  let cnt = 0;
+  [re, re2, re3, re4].forEach(r => {
+    const matches = text.match(r);
+    if (matches) cnt += matches.length;
+  });
+  return cnt;
+}
+
+/* ══ 체크 아이템 HTML ══ */
+function ciHtml(status, label, note, detail='') {
+  const icons = { ok:'✅', warn:'⚠️', error:'🚨', info:'ℹ️' };
+  const labels = { ok:'이상 없음', warn:'확인 필요', error:'수정 필요', info:'참고' };
+  return `<div class="check-item ${status}">
+    <span class="ci-icon">${icons[status]}</span>
+    <div class="ci-body">
+      <div class="ci-top">
+        <span class="ci-label ${status}">${label}</span>
+        <span class="ci-badge ${status}">${labels[status]}</span>
+      </div>
+      <div class="ci-note">${note}</div>
+      ${detail ? `<div class="ci-detail">${detail}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+/* ══ 메인 분석 ══ */
+async function run() {
+  if (!pdf1 || !pdf2) return;
+  const btn = document.getElementById('goBtn');
+  btn.disabled = true; btn.classList.remove('on'); btn.textContent = '분석 중...';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('errBox').style.display = 'none';
+
+  try {
+    setLoadMsg('시험지 PDF 텍스트 추출 중...');
+    text1 = await extractText(pdf1);
+    setLoadMsg('문항정보표 PDF 텍스트 추출 중...');
+    text2 = await extractText(pdf2);
+    setLoadMsg('비교 분석 중...');
+    await analyze();
+    const apiKey = document.getElementById('apiKey').value.trim();
+    if (apiKey) {
+      setLoadMsg('AI 심화 분석 중...');
+      await analyzeWithAI(apiKey);
+    }
+  } catch(e) {
+    showErr('분석 중 오류가 발생했습니다: ' + e.message);
+  }
+
+  document.getElementById('loading').style.display = 'none';
+  btn.disabled = false; btn.classList.add('on'); btn.textContent = '🔍 다시 점검하기';
+}
+
+function setLoadMsg(msg) { document.getElementById('loadingMsg').textContent = msg; }
+function showErr(msg) {
+  const b = document.getElementById('errBox');
+  b.innerHTML = '⚠️ ' + msg;
+  b.style.display = 'block';
+  document.getElementById('loading').style.display = 'none';
+}
+
+/* ══ 분석 로직 ══ */
+async function analyze() {
+  const q1 = parseQuestionNums(text1);
+  const q2 = parseQuestionNums(text2);
+  const s1 = parseScores(text1);
+  const s2 = parseScores(text2);
+  const a1 = parseAnswers(text1);
+  const a2 = parseAnswers(text2);
+
+  /* ── 비교 섹션 ── */
+  const cmpItems = [];
+  let cmpErr = 0;
+
+  // 문항 수 비교
+  if (q1.length > 0 && q2.length > 0) {
+    if (q1.length === q2.length) {
+      cmpItems.push(ciHtml('ok', `문항 수 일치 (${q1.length}문항)`,
+        `시험지와 문항정보표 모두 ${q1.length}문항으로 동일합니다.`));
+    } else {
+      cmpErr++;
+      cmpItems.push(ciHtml('error', `문항 수 불일치`,
+        `시험지 ${q1.length}문항, 문항정보표 ${q2.length}문항 — 두 파일의 문항 수가 다릅니다.`,
+        `시험지 문항 번호: ${q1.join(', ')}<br>문항정보표 번호: ${q2.join(', ')}`));
+    }
+  } else {
+    cmpItems.push(ciHtml('warn', '문항 번호 인식 제한',
+      'PDF 구조상 문항 번호를 자동으로 인식하지 못했습니다. 직접 확인이 필요합니다.'));
+  }
+
+  // 번호 매칭
+  if (q1.length > 0 && q2.length > 0) {
+    const onlyIn1 = q1.filter(n => !q2.includes(n));
+    const onlyIn2 = q2.filter(n => !q1.includes(n));
+    if (onlyIn1.length === 0 && onlyIn2.length === 0) {
+      cmpItems.push(ciHtml('ok', '문항 번호 매칭 완료',
+        '시험지와 문항정보표의 문항 번호가 정확히 일치합니다.'));
+    } else {
+      cmpErr++;
+      let det = '';
+      if (onlyIn1.length) det += `시험지에만 있는 번호: <strong>${onlyIn1.join(', ')}</strong><br>`;
+      if (onlyIn2.length) det += `문항정보표에만 있는 번호: <strong>${onlyIn2.join(', ')}</strong>`;
+      cmpItems.push(ciHtml('error', '문항 번호 매칭 오류',
+        '두 파일 간 문항 번호가 일치하지 않는 항목이 있습니다.', det));
+    }
+  }
+
+  // 배점 총점 비교
+  const t1 = s1.reduce((a,b)=>a+b,0);
+  const t2 = s2.reduce((a,b)=>a+b,0);
+  if (s1.length > 0 && s2.length > 0) {
+    if (t1 === t2) {
+      const status = t1 === 100 ? 'ok' : 'warn';
+      cmpItems.push(ciHtml(status,
+        t1===100 ? `배점 총점 일치 (100점)` : `배점 총점 일치 (${t1}점)`,
+        t1===100
+          ? '두 파일의 배점 합계가 100점으로 동일합니다.'
+          : `두 파일 모두 총점이 ${t1}점입니다. 100점이 맞는지 확인해주세요.`,
+        t1!==100 ? `시험지 배점 합: ${t1}점 / 문항정보표 배점 합: ${t2}점` : ''
+      ));
+      if (t1 !== 100) cmpErr++;
+    } else {
+      cmpErr++;
+      cmpItems.push(ciHtml('error', '배점 총점 불일치',
+        `시험지 총점 ${t1}점, 문항정보표 총점 ${t2}점 — 두 파일의 배점 합계가 다릅니다.`,
+        `시험지 배점 목록: ${s1.join(', ')} = <strong>${t1}점</strong><br>문항정보표 배점 목록: ${s2.join(', ')} = <strong>${t2}점</strong>`));
+    }
+  } else if (s1.length > 0 || s2.length > 0) {
+    cmpItems.push(ciHtml('warn', '배점 비교 불완전',
+      '한쪽 파일에서 배점 정보를 충분히 읽지 못했습니다. 직접 확인해주세요.'));
+  }
+
+  /* ── 시험지 자체 점검 ── */
+  const examItems = [];
+  let examErr = 0;
+
+  // 문항 번호 누락/중복
+  if (q1.length > 0) {
+    const missing = findMissingNums(q1);
+    const dups    = detectDuplicates(q1.concat(q1).slice(0, q1.length)); // 실제 중복 감지
+    if (missing.length === 0) {
+      examItems.push(ciHtml('ok', `문항 번호 연속성 확인 (${q1.length}문항)`,
+        '문항 번호가 1번부터 순서대로 빠짐없이 있습니다.'));
+    } else {
+      examErr++;
+      examItems.push(ciHtml('error', '문항 번호 누락 또는 순서 오류',
+        `다음 번호가 시험지에서 발견되지 않았습니다.`,
+        `누락된 번호: <strong>${missing.join(', ')}번</strong>`));
+    }
+  }
+
+  // 배점 총점
+  if (s1.length > 0) {
+    if (t1 === 100) {
+      examItems.push(ciHtml('ok', `배점 합계 100점 확인`,
+        `배점을 모두 더하면 ${t1}점으로, 100점 만점이 맞습니다. (배점 ${s1.length}개 인식)`));
+    } else if (t1 > 0) {
+      examErr++;
+      examItems.push(ciHtml('error', `배점 합계 오류 (현재 ${t1}점)`,
+        `배점 합계가 ${t1}점입니다. 100점이 되도록 수정이 필요합니다.`,
+        `인식된 배점: ${s1.join('점 + ')}점 = <strong>${t1}점</strong><br>${t1 < 100 ? (100-t1)+'점이 부족합니다.' : (t1-100)+'점이 초과되었습니다.'}`));
+    }
+  } else {
+    examItems.push(ciHtml('warn', '배점 정보 인식 불가',
+      '배점 표기를 자동으로 찾지 못했습니다. "[3점]" 또는 "(2점)" 형식으로 표기되어 있는지 확인해주세요.'));
+  }
+
+  // 부정 발문
+  const negCnt = countNegative(text1);
+  const totalQ = q1.length || 20; // 인식 안 되면 20으로 가정
+  const negPct = Math.round(negCnt / totalQ * 100);
+  if (negCnt === 0) {
+    examItems.push(ciHtml('ok', '부정 발문 없음', '부정적 표현("옳지 않은 것", "아닌 것" 등)이 발견되지 않았습니다.'));
+  } else if (negPct <= 30) {
+    examItems.push(ciHtml('info', `부정 발문 ${negCnt}개 (${negPct}%)`,
+      `부정 발문이 ${negCnt}건 발견되었으나 기준(30%) 이내입니다.`,
+      `발견된 부정 표현: "옳지 않은 것", "아닌 것", "틀린 것" 등`));
+  } else {
+    examErr++;
+    examItems.push(ciHtml('warn', `부정 발문 과다 (${negCnt}개, 약 ${negPct}%)`,
+      `부정 발문이 전체 문항의 30%를 초과합니다. 일부를 긍정 발문으로 바꾸는 것을 권장합니다.`));
+  }
+
+  // 정답 연속 패턴
+  if (a1.length >= 3) {
+    const pats = detectAnswerPattern(a1);
+    if (pats.length === 0) {
+      examItems.push(ciHtml('ok', '정답 연속 중복 없음',
+        `정답이 같은 번호로 3개 이상 연속되는 패턴이 없습니다.`));
+    } else {
+      examErr++;
+      const det = pats.map(p => `${p.start}~${p.start+p.len-1}번 연속 정답 ③`).join('<br>');
+      examItems.push(ciHtml('warn', `정답 연속 중복 패턴 발견`,
+        '같은 번호의 정답이 연속으로 반복됩니다. 정답 배치를 조정하는 것이 좋습니다.', det));
+    }
+  }
+
+  /* ── 문항정보표 자체 점검 ── */
+  const tableItems = [];
+  let tableErr = 0;
+
+  if (q2.length > 0) {
+    const missing2 = findMissingNums(q2);
+    if (missing2.length === 0) {
+      tableItems.push(ciHtml('ok', `문항 번호 연속성 확인 (${q2.length}문항)`,
+        '문항정보표의 번호가 빠짐없이 순서대로 있습니다.'));
+    } else {
+      tableErr++;
+      tableItems.push(ciHtml('error', '문항 번호 누락',
+        '문항정보표에서 다음 번호가 발견되지 않았습니다.',
+        `누락된 번호: <strong>${missing2.join(', ')}번</strong>`));
+    }
+  }
+
+  if (s2.length > 0) {
+    if (t2 === 100) {
+      tableItems.push(ciHtml('ok', `배점 합계 100점 확인`,
+        `문항정보표 배점 합계가 ${t2}점으로 정확합니다.`));
+    } else if (t2 > 0) {
+      tableErr++;
+      tableItems.push(ciHtml('error', `배점 합계 오류 (${t2}점)`,
+        `문항정보표 배점 합계가 ${t2}점입니다. 100점이 되도록 수정이 필요합니다.`,
+        `인식된 배점: ${s2.join('점 + ')}점 = <strong>${t2}점</strong>`));
+    }
+  }
+
+  // 정답란 누락 체크 (정답 수 vs 문항 수)
+  if (a2.length > 0 && q2.length > 0) {
+    if (a2.length >= q2.length * 0.8) {
+      tableItems.push(ciHtml('ok', `정답 기재 확인 (${a2.length}문항)`,
+        '문항정보표에 정답이 대부분 기재되어 있습니다.'));
+    } else {
+      tableErr++;
+      tableItems.push(ciHtml('warn', `정답 기재 불완전 (${a2.length}/${q2.length})`,
+        `${q2.length - a2.length}개 문항의 정답이 문항정보표에서 발견되지 않았습니다. 정답란을 확인해주세요.`));
+    }
+  }
+
+  /* ── 요약 계산 ── */
+  const totalErr = cmpErr + examErr + tableErr;
+  renderSummary(totalErr, q1.length, t1);
+
+  /* ── 섹션 렌더 ── */
+  renderSection('cmpList',   cmpItems,   'cmpCount',   cmpErr);
+  renderSection('examList',  examItems,  'examCount',  examErr);
+  renderSection('tableList', tableItems, 'tableCount', tableErr);
+
+  // 인쇄 헤더
+  document.getElementById('pFiles').textContent =
+    `시험지: ${pdf1?.name || ''}  |  문항정보표: ${pdf2?.name || ''}`;
+  document.getElementById('pDate').textContent =
+    '점검 일시: ' + new Date().toLocaleString('ko-KR');
+
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('result').scrollIntoView({ behavior:'smooth', block:'start' });
+
+  // 복사용 텍스트 저장
+  window._reportText = buildReportText(q1, q2, t1, t2, totalErr);
+}
+
+function renderSummary(errCnt, qCnt, total) {
+  const b = document.getElementById('sumBanner');
+  const icon = document.getElementById('sumIcon');
+  const title = document.getElementById('sumTitle');
+  const desc  = document.getElementById('sumDesc');
+  const chips = document.getElementById('sumChips');
+
+  if (errCnt === 0) {
+    b.className = 'summary-banner good';
+    icon.textContent = '🎉';
+    title.className = 'summary-title good';
+    title.textContent = '점검 통과! 이상 없음';
+    desc.textContent = '자동 분석 결과 발견된 오류가 없습니다. 아래 수동 체크리스트도 함께 확인해주세요.';
+  } else if (errCnt <= 2) {
+    b.className = 'summary-banner warn';
+    icon.textContent = '⚠️';
+    title.className = 'summary-title warn';
+    title.textContent = `확인 필요 항목 ${errCnt}건`;
+    desc.textContent = '일부 항목에서 수정이 필요한 내용이 발견되었습니다. 아래 상세 내용을 확인해주세요.';
+  } else {
+    b.className = 'summary-banner bad';
+    icon.textContent = '🚨';
+    title.className = 'summary-title bad';
+    title.textContent = `수정 필요 항목 ${errCnt}건 발견`;
+    desc.textContent = '여러 항목에서 오류가 발견되었습니다. 시험 전 반드시 수정 후 재점검하세요.';
+  }
+
+  chips.innerHTML = [
+    qCnt > 0 ? `<div class="chip" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE">📝 ${qCnt}문항 인식</div>` : '',
+    total > 0 ? `<div class="chip" style="background:#F0FDF4;color:#15803D;border-color:#BBF7D0">📊 배점 합계 ${total}점</div>` : '',
+  ].join('');
+}
+
+function renderSection(listId, items, countId, errCnt) {
+  document.getElementById(listId).innerHTML = items.join('') ||
+    '<div style="color:var(--gray-400);font-size:13px;padding:10px 4px;">인식된 항목이 없습니다.</div>';
+  const el = document.getElementById(countId);
+  if (errCnt > 0) {
+    el.textContent = `문제 ${errCnt}건`;
+    el.style.background = '#FEE2E2'; el.style.color = '#DC2626';
+  } else {
+    el.textContent = '이상 없음';
+    el.style.background = '#D1FAE5'; el.style.color = '#15803D';
+  }
+}
+
+/* ══ AI 분석 ══ */
+async function analyzeWithAI(apiKey) {
+  const checklistStr = `
+1. 동일 단어/표현 불필요 반복 여부
+2. 맞춤법·표기 오류
+3. 정답 객관성 및 복수 정답 소지
+4. 선행학습 내용 포함 여부
+5. 특정 문화·성별·지역 편향 표현
+6. 이의제기 가능성 있는 문항`.trim();
+
+  const prompt = `다음은 시험지와 문항정보표 PDF에서 추출한 텍스트입니다.
+아래 항목을 점검하고 반드시 순수 JSON만 출력하세요 (마크다운 없이):
+
+점검 항목:
+${checklistStr}
+
+[시험지 텍스트 (앞 3000자)]
+${text1.slice(0,3000)}
+
+[문항정보표 텍스트 (앞 2000자)]
+${text2.slice(0,2000)}
+
+출력 형식:
+{"issues":[{"type":"오류|주의|이의제기우려","item":"해당 문항 또는 표현","detail":"구체적 설명과 수정 제안"}]}
+발견된 문제가 없으면: {"issues":[]}`;
+
+  try {
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{role:'user',parts:[{text:prompt}]}],
+          generationConfig:{temperature:0.1,maxOutputTokens:1500}
+        })
+      }
+    );
+    const data = await resp.json();
+    if (data.error) return;
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    const issues = parsed.issues || [];
+
+    const IS2 = {
+      '오류':        { icon:'🚨', status:'error' },
+      '주의':        { icon:'📌', status:'warn'  },
+      '이의제기우려': { icon:'⚖️', status:'warn'  },
+    };
+
+    if (issues.length === 0) {
+      document.getElementById('aiList').innerHTML =
+        ciHtml('ok','AI 분석 이상 없음','내용적 오류, 맞춤법, 편향 표현 등이 발견되지 않았습니다.');
+    } else {
+      document.getElementById('aiList').innerHTML = issues.map(is => {
+        const t = IS2[is.type] || IS2['주의'];
+        return ciHtml(t.status, `${t.icon} ${is.item}`, is.detail);
+      }).join('');
+    }
+    document.getElementById('aiCount').textContent = issues.length > 0 ? `${issues.length}건` : '이상 없음';
+    document.getElementById('aiSection').style.display = 'block';
+  } catch(e) { /* AI 실패는 조용히 무시 */ }
+}
+
+/* ══ 복사 ══ */
+function buildReportText(q1, q2, t1, t2, errCnt) {
+  const d = new Date().toLocaleString('ko-KR');
+  return `[시험 출제 점검 결과] ${d}
+시험지: ${pdf1?.name || ''} | 문항정보표: ${pdf2?.name || ''}
+━━━━━━━━━━━━━━━━━━━━━━━━
+발견된 문제: ${errCnt}건
+시험지 문항수: ${q1.length}문항 / 배점 합계: ${t1}점
+문항정보표 문항수: ${q2.length}문항 / 배점 합계: ${t2}점
+━━━━━━━━━━━━━━━━━━━━━━━━
+자세한 내용은 점검기 화면을 참고하세요.
+출처: 보라쌤 & 역사를 보라`;
+}
+
+async function copyResult() {
+  const txt = window._reportText || '결과가 없습니다.';
+  try {
+    await navigator.clipboard.writeText(txt);
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ 복사됨!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  } catch(e) {
+    alert('복사에 실패했습니다. 인쇄 기능을 이용해주세요.');
+  }
+}
+
+/* ══ 수동 체크리스트 ══ */
+function buildManual() {
+  const done = mState.filter(Boolean).length;
+  const pct  = Math.round(done / MANUAL_ITEMS.length * 100);
+  document.getElementById('mBar').style.width  = pct + '%';
+  document.getElementById('mPct').textContent  = `${done}/${MANUAL_ITEMS.length} 완료`;
+  document.getElementById('mList').innerHTML = MANUAL_ITEMS.map((txt, i) =>
+    `<div class="m-item ${mState[i]?'done':''}" onclick="toggleM(${i})">
+      <div class="m-cb">${mState[i]?'✓':''}</div>
+      <div class="m-txt">${txt}</div>
+    </div>`
+  ).join('');
+}
+
+function toggleM(i) { mState[i] = !mState[i]; buildManual(); }
+buildManual();
+</script>
+</body>
+</html>

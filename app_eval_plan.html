@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>평가계획 점검기 v4.3</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --primary: #3A5A40;
+            --primary-light: #A3B18A;
+            --primary-bg: #F0F4F1;
+            --text-dark: #2C362E;
+            --text-gray: #5A665D;
+            --border-color: #D3DDD5;
+            --bg-white: #FFFFFF;
+            --hover-bg: #E4ECE5;
+            --source-bg: #e8ede9;
+            --danger: #d32f2f;
+            --danger-bg: #fff8f8;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-dark);
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column; min-height: 100vh;
+            word-break: keep-all; overflow-wrap: break-word;
+        }
+        header {
+            background-color: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.2rem 2rem;
+            display: flex; align-items: center;
+            position: sticky; top: 0; z-index: 100;
+        }
+        header h1 { margin: 0; font-size: 1.5rem; color: var(--primary); font-weight: 800; }
+        main {
+            flex: 1; width: 100%; max-width: 900px; margin: 0 auto;
+            padding: 2rem 1.5rem; box-sizing: border-box;
+            display: flex; flex-direction: column; gap: 2rem; align-items: center;
+        }
+        .panel-container { width: 100%; max-width: 800px; }
+        .section-title {
+            font-size: 1.15rem; font-weight: 700; color: var(--text-dark);
+            margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;
+        }
+        .source-panel, .target-panel {
+            background-color: var(--bg-white); border-radius: 12px; padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 1px solid var(--border-color);
+            width: 100%; box-sizing: border-box;
+        }
+        .source-list { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+        .source-card {
+            background-color: var(--source-bg); border: 1px solid var(--primary-light);
+            border-radius: 8px; padding: 0.8rem 1rem;
+            display: flex; align-items: center; gap: 10px;
+            min-width: 250px; flex: 1; max-width: 350px; box-sizing: border-box;
+        }
+        @media (max-width: 600px) { .source-card { max-width: 100%; flex: 100%; } }
+        .source-card .icon { font-size: 1.5rem; }
+        .source-card .info { flex: 1; font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
+        .source-card .info small { font-size: 0.75rem; color: var(--text-gray); font-weight: normal; }
+        .remove-source-btn { background: none; border: none; color: var(--text-gray); font-size: 1.2rem; cursor: pointer; padding: 0 5px; }
+        .remove-source-btn:hover { color: #d32f2f; }
+        .add-source-btn {
+            background-color: transparent; border: 2px dashed var(--primary-light);
+            border-radius: 8px; padding: 0.8rem 1rem;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            color: var(--primary); font-weight: 600; cursor: pointer; transition: all 0.2s;
+            flex: 1; min-width: 250px; max-width: 350px;
+        }
+        .add-source-btn:hover { background-color: var(--hover-bg); border-color: var(--primary); }
+        @media (max-width: 600px) { .add-source-btn { max-width: 100%; flex: 100%; } }
+        .upload-box {
+            width: 100%; background-color: #fafafa; border: 2px dashed var(--primary-light);
+            border-radius: 12px; padding: 3rem 1rem;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; cursor: pointer; transition: all 0.2s ease; box-sizing: border-box;
+        }
+        .upload-box:hover { border-color: var(--primary); background-color: var(--hover-bg); }
+        .upload-box.active { border-style: solid; border-color: var(--primary); background-color: #EBF1EC; }
+        .upload-icon { font-size: 3rem; margin-bottom: 1rem; line-height: 1; }
+        .upload-title { font-weight: 700; font-size: 1.2rem; margin-bottom: 0.6rem; color: var(--primary); }
+        .upload-desc { font-size: 0.95rem; color: var(--text-gray); line-height: 1.5; }
+        input[type="file"] { display: none; }
+        .btn-container { width: 100%; display: flex; justify-content: center; margin-top: 1rem; }
+        .btn-submit {
+            background-color: var(--primary); color: white; border: none;
+            padding: 1.2rem; font-size: 1.2rem; font-weight: bold; border-radius: 8px;
+            cursor: pointer; width: 100%; max-width: 400px;
+            box-shadow: 0 4px 6px rgba(58,90,64,0.2); transition: background-color 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-submit:active { background-color: #2D4A32; }
+        #loading-section { display: none; margin-top: 1rem; text-align: center; color: var(--primary); font-weight: bold; width: 100%; }
+        .spinner {
+            border: 4px solid rgba(0,0,0,0.1); width: 40px; height: 40px;
+            border-radius: 50%; border-left-color: var(--primary);
+            animation: spin 1s linear infinite; margin: 0 auto 1rem auto;
+        }
+        @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+        #loading-text { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; transition: opacity 0.3s; }
+        #results-section {
+            display: none; width: 100%; max-width: 800px; background-color: var(--bg-white);
+            border-radius: 12px; padding: 2rem 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-top: 5px solid var(--primary);
+            box-sizing: border-box;
+        }
+        .results-header { text-align: center; margin-bottom: 1.5rem; }
+        .results-title { font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-bottom: 0.5rem; }
+        #main-result-box {
+            width: 100%; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: 8px;
+            font-family: inherit; font-size: 1.05rem; line-height: 1.7; box-sizing: border-box;
+            background-color: #fafafa; color: var(--text-dark); margin-bottom: 1.5rem;
+            overflow-y: auto; max-height: 600px; text-align: left;
+        }
+        .download-buttons { display: flex; flex-direction: row; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .btn-action {
+            display: inline-flex; justify-content: center; align-items: center;
+            padding: 1rem 1.5rem; font-size: 1.05rem; font-weight: bold; border-radius: 8px;
+            cursor: pointer; flex: 1; min-width: 250px; max-width: 350px;
+            transition: all 0.2s; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-copy { background-color: var(--primary); color: white; }
+        .btn-copy:active { background-color: #2D4A32; }
+        .btn-pdf { background-color: var(--bg-white); color: var(--primary); border: 2px solid var(--primary); }
+        .btn-pdf:active { background-color: #E4ECE5; }
+        footer {
+            padding: 1.5rem 1rem; text-align: center; font-size: 0.9rem;
+            color: #8C7B38; font-weight: 600; background-color: var(--bg-white);
+            border-top: 1px solid var(--border-color); margin-top: auto;
+            width: 100%; box-sizing: border-box;
+        }
+        @media print {
+            body * { visibility: hidden; }
+            #pdf-template, #pdf-template * { visibility: visible; }
+            #pdf-template { position: absolute; left: 0; top: 0; width: 100%; display: block !important; padding: 0; background: white; }
+            body { background-color: white; }
+            .pdf-page-break { page-break-before: always; }
+        }
+        #pdf-template {
+            display: none; width: 100%; max-width: 210mm; margin: 0 auto;
+            padding: 20mm; background-color: white; color: black;
+            font-family: 'Malgun Gothic', sans-serif; box-sizing: border-box;
+        }
+        .pdf-header { text-align: center; font-size: 18pt; font-weight: bold; margin-bottom: 10px; border-bottom: 2px solid black; padding-bottom: 10px; }
+        .pdf-warning { background-color: #fff3cd; color: #d84315; border: 1px solid #ffeeba; padding: 10px; border-radius: 4px; font-size: 9.5pt; font-weight: bold; margin-bottom: 20px; line-height: 1.4; text-align: center; }
+        .pdf-section-title { font-size: 13pt; font-weight: bold; margin-top: 20px; margin-bottom: 10px; background-color: #f0f0f0; padding: 6px 10px; border-left: 5px solid #3A5A40; }
+        .pdf-content-box { font-size: 11pt; line-height: 1.6; padding: 0 10px; }
+        .pdf-list { font-size: 11pt; line-height: 1.6; padding-left: 25px; margin: 0 0 10px 0; }
+        .pdf-list li { margin-bottom: 5px; }
+        .pdf-issue-item { margin-bottom: 15px; font-size: 11pt; line-height: 1.6; border-bottom: 1px dashed #ccc; padding-bottom: 15px; padding-left: 10px; }
+        .pdf-issue-item:last-child { border-bottom: none; }
+        .badge-category { display: inline-block; background-color: #d35400; color: white; padding: 2px 8px; border-radius: 4px; font-size: 9pt; font-weight: bold; margin-right: 6px; }
+        #hidden-copy-area { position: absolute; left: -9999px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>📋 평가계획 점검기 v4.3</h1>
+</header>
+
+<main>
+    <!-- 점검 기준 패널 -->
+    <div class="panel-container source-panel">
+        <div class="section-title">📚 점검 기준 (Knowledge Base)</div>
+        <p style="font-size:0.9rem; color:var(--text-gray); margin-top:0; margin-bottom:1rem; text-align:center;">
+            AI가 아래의 규정 및 <strong>학교 자체 양식/메모</strong>를 숙지하고 점검합니다.
+        </p>
+        <div class="source-list">
+            <div class="source-card">
+                <span class="icon">🏛️</span>
+                <div class="info">
+                    대전시 학업성적관리 지침<br>
+                    <small>2026학년도 기준 (기본 탑재)</small>
+                </div>
+            </div>
+            <div class="source-card" id="custom-rule-card" style="display:none; background-color:#e3f2fd; border-color:#90caf9;">
+                <span class="icon">📑</span>
+                <div class="info">
+                    <span id="custom-rule-name">추가 규정/양식 파일명</span><br>
+                    <small>최우선 적용 (메모/지침 포함)</small>
+                </div>
+                <button class="remove-source-btn" onclick="removeCustomRule()" title="삭제">&times;</button>
+            </div>
+            <button class="add-source-btn" id="add-source-btn" onclick="document.getElementById('rule-file').click()">
+                <span>+ 자체 양식 / 규정 추가</span>
+            </button>
+            <input type="file" id="rule-file" accept=".pdf" onchange="handleRuleUpload()">
+        </div>
+    </div>
+
+    <!-- 업로드 모드 탭 -->
+    <div class="panel-container" style="background:var(--bg-white); border-radius:12px; padding:1.2rem 1.5rem; box-shadow:0 2px 8px rgba(0,0,0,0.03); border:1px solid var(--border-color); width:100%; max-width:800px; box-sizing:border-box;">
+        <div style="display:flex; gap:8px; margin-bottom:1.2rem;">
+            <button id="tab-single" onclick="switchTab('single')"
+                style="flex:1; padding:0.7rem; border-radius:8px; border:2px solid var(--primary); background:var(--primary); color:white; font-weight:700; cursor:pointer; font-size:0.95rem;">
+                📄 단일 PDF
+            </button>
+            <button id="tab-zip" onclick="switchTab('zip')"
+                style="flex:1; padding:0.7rem; border-radius:8px; border:2px solid var(--border-color); background:white; color:var(--text-gray); font-weight:700; cursor:pointer; font-size:0.95rem;">
+                📦 ZIP 일괄 처리
+            </button>
+        </div>
+
+        <!-- 단일 PDF 모드 -->
+        <div id="mode-single">
+            <div class="section-title" style="margin-bottom:0.8rem;">📄 점검할 평가계획서 (Target)</div>
+            <div class="upload-box" id="plan-box" onclick="document.getElementById('plan-file').click()">
+                <div class="upload-icon" id="plan-icon">📂</div>
+                <div class="upload-title" id="plan-title">평가계획서 업로드</div>
+                <div class="upload-desc" id="plan-desc">선생님이 작성하신 PDF 파일을 선택하세요.</div>
+            </div>
+            <input type="file" id="plan-file" accept=".pdf" onchange="handlePlanUpload()">
+        </div>
+
+        <!-- ZIP 일괄 모드 -->
+        <div id="mode-zip" style="display:none;">
+            <div class="section-title" style="margin-bottom:0.8rem;">📦 ZIP 파일 업로드 (PDF 여러 개)</div>
+            <div class="upload-box" id="zip-box" onclick="document.getElementById('zip-file').click()">
+                <div class="upload-icon" id="zip-icon">📦</div>
+                <div class="upload-title" id="zip-title">ZIP 파일 업로드</div>
+                <div class="upload-desc" id="zip-desc">평가계획서 PDF들을 ZIP으로 묶어 업로드하세요.<br>파일명이 과목명으로 표시됩니다.</div>
+            </div>
+            <input type="file" id="zip-file" accept=".zip" onchange="handleZipUpload()">
+            <div id="zip-file-list" style="margin-top:0.8rem; font-size:0.9rem; color:var(--text-gray);"></div>
+        </div>
+    </div>
+
+    <!-- 실행 버튼 -->
+    <div class="btn-container">
+        <button class="btn-submit" id="submit-btn" onclick="startAIInspection()">
+            ✨ 교육과정 전문가 AI 점검 시작
+        </button>
+    </div>
+
+    <!-- 로딩 -->
+    <div id="loading-section">
+        <div class="spinner"></div>
+        <div id="loading-text">문서를 텍스트로 변환하는 중입니다...</div>
+        <div style="font-size:0.9rem; font-weight:normal; color:var(--text-gray); margin-top:5px;">
+            (문서 길이에 따라 1분 내외가 소요될 수 있습니다)
+        </div>
+    </div>
+
+    <!-- 결과 -->
+    <div id="results-section">
+        <div class="results-header">
+            <div class="results-title">✅ 분석이 완료되었습니다.</div>
+            <p style="color:var(--text-gray); font-size:0.95rem; margin:0;">
+                아래 창에서 점검 결과를 즉시 확인하시고, 텍스트 복사 또는 PDF 인쇄를 진행하세요.
+            </p>
+        </div>
+        <div id="main-result-box"></div>
+        <textarea id="hidden-copy-area"></textarea>
+        <div class="download-buttons">
+            <button class="btn-action btn-copy" onclick="copyToClipboard()">📋 텍스트 복사하기</button>
+            <button class="btn-action btn-pdf" onclick="generatePDF()">🖨️ PDF 저장 및 인쇄</button>
+        </div>
+    </div>
+</main>
+
+<footer>문의•개선 사항: 보라쌤 (<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="592d063633696a6b193d333c773e3677322b">[email&#160;protected]</a>)</footer>
+
+<!-- 인쇄용 템플릿 -->
+<div id="pdf-template">
+    <div class="pdf-header">평가계획서 AI 점검 결과 리포트 (v4.3)</div>
+    <div style="text-align:right; margin-bottom:10px; font-size:10pt;">
+        분석 일시: <span id="report-date"></span><br>
+        적용 기준: <span id="report-rule">대전광역시 기준</span>
+    </div>
+    <div class="pdf-warning">
+        ⚠ 본 결과는 AI 기반 참고용 점검 가이드입니다.<br>
+        최종 판단은 학교 규정 및 교육청 지침에 따라 교사가 직접 확인해야 합니다.
+    </div>
+    <div class="pdf-section-title">1. 종합 평가 요약</div>
+    <div class="pdf-content-box" id="pdf-summary"></div>
+    <div class="pdf-section-title">2. 점검 결과 체크리스트</div>
+    <div id="pdf-checklist-result"></div>
+    <div class="pdf-section-title">3. 우수 사항</div>
+    <ul class="pdf-list" id="pdf-strengths"></ul>
+    <div class="pdf-section-title">4. 🚨 필수 수정 및 개선 필요 사항</div>
+    <div id="pdf-issues"></div>
+    <div class="pdf-section-title">5. 최종 제출 전 직접 확인 항목</div>
+    <ul class="pdf-list" id="pdf-checklist"></ul>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+// ★ 로컬에서 직접 사용할 경우 여기에 본인의 Gemini API 키를 입력하세요.
+const apiKey = "";
+
+let globalTextResult = "";
+let customRuleText = "";
+let loadingInterval;
+
+// =========================================================
+// 파일 업로드 핸들러
+// =========================================================
+function handleRuleUpload() {
+    const fileInput = document.getElementById('rule-file');
+    if (fileInput.files.length > 0) {
+        const fileName = fileInput.files[0].name;
+        document.getElementById('custom-rule-name').innerText = fileName;
+        document.getElementById('custom-rule-card').style.display = 'flex';
+        document.getElementById('add-source-btn').style.display = 'none';
+        extractTextFromPDF(fileInput.files[0]).then(text => {
+            customRuleText = text;
+        }).catch(() => {
+            alert("추가하신 규정/양식 파일을 읽을 수 없습니다.");
+            removeCustomRule();
+        });
+    }
+}
+
+function removeCustomRule() {
+    document.getElementById('rule-file').value = "";
+    document.getElementById('custom-rule-card').style.display = 'none';
+    document.getElementById('add-source-btn').style.display = 'flex';
+    customRuleText = "";
+}
+
+function handlePlanUpload() {
+    const fileInput = document.getElementById('plan-file');
+    if (fileInput.files.length > 0) {
+        const fileName = fileInput.files[0].name;
+        document.getElementById('plan-box').classList.add('active');
+        document.getElementById('plan-icon').innerText = "✅";
+        document.getElementById('plan-title').innerText = "업로드 준비 완료";
+        document.getElementById('plan-desc').innerText = fileName;
+    }
+}
+
+// =========================================================
+// 탭 전환
+// =========================================================
+let currentMode = 'single';
+let zipPdfFiles = []; // {name, arrayBuffer}
+
+function switchTab(mode) {
+    currentMode = mode;
+    const isSingle = mode === 'single';
+    document.getElementById('mode-single').style.display = isSingle ? 'block' : 'none';
+    document.getElementById('mode-zip').style.display = isSingle ? 'none' : 'block';
+    document.getElementById('tab-single').style.background = isSingle ? 'var(--primary)' : 'white';
+    document.getElementById('tab-single').style.color = isSingle ? 'white' : 'var(--text-gray)';
+    document.getElementById('tab-single').style.borderColor = isSingle ? 'var(--primary)' : 'var(--border-color)';
+    document.getElementById('tab-zip').style.background = isSingle ? 'white' : 'var(--primary)';
+    document.getElementById('tab-zip').style.color = isSingle ? 'var(--text-gray)' : 'white';
+    document.getElementById('tab-zip').style.borderColor = isSingle ? 'var(--border-color)' : 'var(--primary)';
+}
+
+// =========================================================
+// ZIP 업로드 핸들러
+// =========================================================
+async function handleZipUpload() {
+    const fileInput = document.getElementById('zip-file');
+    if (fileInput.files.length === 0) return;
+    const zipFile = fileInput.files[0];
+    document.getElementById('zip-icon').innerText = "⏳";
+    document.getElementById('zip-title').innerText = "ZIP 읽는 중...";
+    document.getElementById('zip-desc').innerText = "";
+    try {
+        const zip = await JSZip.loadAsync(await zipFile.arrayBuffer());
+        zipPdfFiles = [];
+        const promises = [];
+        zip.forEach((relativePath, entry) => {
+            if (!entry.dir && relativePath.toLowerCase().endsWith('.pdf')) {
+                // 폴더 경로 제거, 파일명만 사용
+                const name = relativePath.split('/').pop().replace(/\.pdf$/i, '');
+                promises.push(
+                    entry.async('arraybuffer').then(buf => {
+                        zipPdfFiles.push({ name, arrayBuffer: buf });
+                    })
+                );
+            }
+        });
+        await Promise.all(promises);
+        zipPdfFiles.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+        document.getElementById('zip-icon').innerText = "✅";
+        document.getElementById('zip-title').innerText = `${zipPdfFiles.length}개 과목 준비 완료`;
+        document.getElementById('zip-desc').innerText = zipPdfFiles.map(f => f.name).join(', ');
+        document.getElementById('zip-file-list').innerHTML =
+            zipPdfFiles.map((f, i) => `<span style="display:inline-block; background:var(--source-bg); border-radius:4px; padding:2px 8px; margin:2px; font-size:0.85rem;">${i+1}. ${f.name}</span>`).join('');
+    } catch(e) {
+        alert("ZIP 파일을 읽을 수 없습니다. PDF들을 ZIP으로 압축했는지 확인해 주세요.");
+        document.getElementById('zip-icon').innerText = "📦";
+        document.getElementById('zip-title').innerText = "ZIP 파일 업로드";
+    }
+}
+
+// =========================================================
+// PDF 텍스트 추출
+// =========================================================
+async function extractTextFromPDF(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let pages = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const viewport = page.getViewport({ scale: 1.0 });
+
+        // 좌표 기반 줄 재구성
+        // items를 y좌표로 그룹화 (같은 줄 = y좌표 차이 3pt 이내)
+        const items = content.items.map(item => ({
+            str: item.str,
+            x: Math.round(item.transform[4]),
+            y: Math.round(viewport.height - item.transform[5]) // PDF y축 반전
+        })).filter(item => item.str.trim() !== '');
+
+        // y좌표로 정렬 후 행 그룹화
+        items.sort((a, b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
+
+        const lines = [];
+        let currentY = null;
+        let currentLine = [];
+
+        for (const item of items) {
+            if (currentY === null || Math.abs(item.y - currentY) <= 4) {
+                currentLine.push(item);
+                if (currentY === null) currentY = item.y;
+            } else {
+                if (currentLine.length > 0) {
+                    // x좌표 순서로 정렬 후 탭으로 구분 (표 열 구분)
+                    currentLine.sort((a, b) => a.x - b.x);
+                    lines.push(currentLine.map(it => it.str).join('\t'));
+                }
+                currentLine = [item];
+                currentY = item.y;
+            }
+        }
+        if (currentLine.length > 0) {
+            currentLine.sort((a, b) => a.x - b.x);
+            lines.push(currentLine.map(it => it.str).join('\t'));
+        }
+
+        pages.push({ pageNum: i, lines });
+    }
+
+    // 반복 헤더/푸터 제거: 3페이지 이상에서 동일하게 반복되는 줄 제거
+    const lineFreq = {};
+    for (const p of pages) {
+        const seen = new Set();
+        for (const line of p.lines) {
+            const key = line.trim();
+            if (key.length > 3 && !seen.has(key)) {
+                lineFreq[key] = (lineFreq[key] || 0) + 1;
+                seen.add(key);
+            }
+        }
+    }
+    const headerFooterThreshold = Math.max(3, Math.floor(pages.length * 0.6));
+    const repeatLines = new Set(
+        Object.entries(lineFreq)
+            .filter(([k, v]) => v >= headerFooterThreshold)
+            .map(([k]) => k)
+    );
+
+    // 최종 텍스트 조합
+    let fullText = '';
+    for (const { pageNum, lines } of pages) {
+        fullText += `\n--- PAGE ${pageNum} ---\n`;
+        for (const line of lines) {
+            const key = line.trim();
+            if (!repeatLines.has(key)) {
+                fullText += line + '\n';
+            }
+        }
+    }
+
+    return fullText;
+}
+
+// 핵심 영역 추출 전처리 — API 전송 전 토큰 절감
+function preprocessText(fullText) {
+    const lines = fullText.split('\n');
+    const result = [];
+
+    // 핵심 키워드 — 이 단어가 포함된 줄 및 전후 컨텍스트 유지
+    const keywordRe = /수행평가|루브릭|유의사항|평가.?방법|평가.?계획|서술형|논술형|기본점수|배점|급간|정기시험|부정행위|AI|인공지능|챗GPT|성취기준|단위|시수|과목|학년|학기|비율|영역|탐구|실험/;
+
+    let keepUntil = -1;
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // 페이지 구분자는 항상 유지
+        if (/--- PAGE \d+ ---/.test(line)) {
+            result.push(line);
+            continue;
+        }
+
+        // 완전히 빈 줄 연속 2개 이상은 1개로 압축
+        if (line.trim() === '') {
+            if (result.length > 0 && result[result.length - 1].trim() === '') continue;
+            result.push('');
+            continue;
+        }
+
+        // 숫자만 있는 줄 (점수 행) — 항상 유지
+        if (/^[\d\t\s\.\/\-]+$/.test(line.trim()) && line.trim().length > 0) {
+            result.push(line);
+            keepUntil = i + 2;
+            continue;
+        }
+
+        // 키워드 포함 시 해당 줄 + 앞뒤 2줄 유지
+        if (keywordRe.test(line)) {
+            // 앞 2줄 소급 추가
+            for (let j = Math.max(0, i - 2); j < i; j++) {
+                const prev = lines[j];
+                if (!result.includes(prev)) result.push(prev);
+            }
+            result.push(line);
+            keepUntil = i + 3;
+            continue;
+        }
+
+        // keepUntil 범위 내 유지
+        if (i <= keepUntil) {
+            result.push(line);
+            continue;
+        }
+    }
+
+    return result.join('\n');
+}
+
+function safeJSONParse(text) {
+    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(clean);
+}
+
+// =========================================================
+// 로딩 메시지
+// =========================================================
+function startLoadingMessages() {
+    const messages = [
+        "평가계획서 원문을 텍스트로 변환하는 중입니다...",
+        "【1단계】 학년 구간 확인 및 자유학기제 예외 설정 중...",
+        "【2단계】 수행평가 비율 30% 이상 여부 계산 중...",
+        "【3단계】 서논술형 비율 및 수행 70% 예외 조건 확인 중...",
+        "【4단계】🔥 루브릭 급간 균등·총점 합산 계산 중...",
+        "【5단계】🔥 기본점수 범위 및 최하점수 역전 검증 중...",
+        "【6단계】 부정행위 처리 기준 문구 탐지 중...",
+        "【7단계】 AI 활용 유의사항 문구 탐지 중...",
+        "【8단계】 평가방법 일치·영역수·시수·오타 전수 점검 중...",
+        "거의 다 되었습니다. 최종 리포트를 작성하는 중입니다..."
+    ];
+    let index = 0;
+    const el = document.getElementById('loading-text');
+    el.innerText = messages[0];
+    loadingInterval = setInterval(() => {
+        index = (index + 1) % messages.length;
+        el.style.opacity = 0;
+        setTimeout(() => { el.innerText = messages[index]; el.style.opacity = 1; }, 300);
+    }, 3500);
+}
+
+function stopLoadingMessages() { clearInterval(loadingInterval); }
+
+// =========================================================
+// ★★★ 핵심 시스템 프롬프트 v4.0 ★★★
+// =========================================================
+function buildSystemPrompt(extraRuleText) {
+    let extraSection = "";
+    if (extraRuleText && extraRuleText.trim() !== "") {
+        extraSection = `
+[최우선 적용 점검 기준 - 아래 추가 자료를 가장 먼저, 가장 엄격하게 적용하십시오]
+<추가 자료 시작>
+${extraRuleText.substring(0, 10000)}
+<추가 자료 끝>
+`;
+    }
+
+    return `당신은 대한민국 중·고등학교 평가계획서를 정밀 감사(Audit)하는 교육과정 전문가입니다.
+아래의 [8단계 점검 알고리즘]을 순서대로, 단계를 건너뛰지 말고 반드시 모두 실행하십시오.
+각 단계가 끝날 때마다 내부적으로 "이 단계 완료"를 확인한 뒤 다음 단계로 넘어가십시오.
+
+${extraSection}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[루브릭 표 구조 이해 — 배점·최하점수 계산 전 반드시 숙지]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+이 문서의 루브릭은 평가요소 1개가 2행으로 구성되는 경우가 많습니다.
+표가 페이지에 걸쳐 잘릴 수 있으므로, 앞 페이지와 뒷 페이지를 반드시 이어서 읽으십시오.
+
+[유형 A] AI 도구 행이 있는 경우 (가장 흔한 유형):
+  행1: 평가요소명 (*AI 도구 활용 가능 또는 *AI 도구 활용 불가 포함) | 채점기준 텍스트 4열 | 배점
+  행2: AI 도구 활용 가능(또는 불가) | 등급점수들 | (배점 없음)
+  예시:
+    행1: 유리수와 순환소수 | 텍스트... | 텍스트... | 텍스트... | 텍스트... | 6
+    행2: AI 도구 활용 가능 | 6 | 5 | 4 | 3
+  → 배점 = 행1 오른쪽 끝 숫자 (6)
+  → 등급별 점수 = 행2의 숫자들 (6/5/4/3)
+  → 최하점수 = 행2 맨 오른쪽 숫자 (3)
+  → 행2 숫자들은 배점 합산에 포함하지 않습니다.
+
+[유형 B] 숫자만 있는 행인 경우 (AI 행 없음):
+  행1: 평가요소명 | 채점기준 텍스트 4열 | 배점
+  행2: (빈칸) | 등급점수들 | (배점 없음)
+  예시:
+    행1: 바느질숙련도 | 텍스트... | 텍스트... | 텍스트... | 텍스트... | 12
+    행2: | 12 | 10 | 8 | 6
+  → 배점 = 행1 오른쪽 끝 숫자 (12)
+  → 최하점수 = 행2 맨 오른쪽 숫자 (6)
+
+[점수 없는 경우] 자유학기제(1학년):
+  매우우수/우수/보통 텍스트만 있고 숫자 점수 없음 → 정상. 지적 금지.
+
+[등급 수 혼재]:
+  같은 루브릭 안에서 요소마다 등급 수가 다를 수 있습니다.
+  예: 요소A는 4단계(10/8/6/4), 요소B는 3단계(5/3/1), 요소C는 2단계(2/1)
+  → 각 요소 내에서만 급간을 독립적으로 검증합니다.
+  → 등급 수가 다른 것은 오류가 아닙니다. 지적 금지.
+
+[페이지 경계 처리]:
+  루브릭 표가 두 페이지에 걸쳐 있을 때, 앞 페이지 마지막 행이 다음 페이지 첫 행과 이어집니다.
+  반드시 앞뒤 페이지를 연결하여 하나의 루브릭으로 읽으십시오.
+  페이지가 바뀌었다는 이유로 별개의 루브릭으로 취급하면 안 됩니다.
+
+[배점 합산 규칙]:
+  - 배점 열(오른쪽 끝)에서 각 평가요소당 숫자 1개만 가져와 합산합니다.
+  - 등급별 점수 행(행2)의 숫자는 배점이 아닙니다. 합산에 절대 포함하지 마십시오.
+  - 올바른 계산 예시 (유형 A — 수학 2학년 나만의 수학책):
+    유리수와 순환소수: 배점 6점 + 식의 계산: 배점 6점 + ... = 합계 30점
+
+[최하점수 읽기 규칙]:
+  유형 A: 최하점수 = 행2(AI 도구 행) 맨 오른쪽 숫자
+  유형 B: 최하점수 = 행2(숫자행) 맨 오른쪽 숫자
+  각 요소의 최하점수를 모두 더해 최하점수 합산을 구합니다.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- 페이지 경계(--- PAGE N ---)에서 표 셀이나 문장이 잘려도 문맥으로 이어 읽으십시오.
+- 공백이 망가지거나 조사가 분리되어도(예: "참여했 으나") 의미가 통하면 정상 처리합니다.
+- "문장이 잘렸다"는 이유로 지적하는 것은 엄격히 금지합니다.
+- 체크박스 읽기 규칙 (매우 중요):
+  ■ · ☑ · ✓ = 선택됨(체크됨) / □ = 미선택(체크 안 됨)
+  평가 방법 체크박스는 원문에서 각 항목 앞의 기호를 직접 확인하십시오.
+  "■ 서술 ■ 논술"이면 서술과 논술 모두 선택된 것입니다.
+  "■ 서술 □ 논술"이면 서술만 선택된 것입니다.
+  체크 상태를 추측하거나 변경하는 것은 절대 금지입니다.
+- 숫자·점수가 표 셀 사이에 흩어져 있어도 행·열 순서에 따라 재조합하여 읽으십시오.
+
+[할루시네이션 방지 — 가장 중요한 규칙]
+- 지적하는 모든 내용(평가요소명, 항목명, 수치, 체크박스 상태)은 반드시 원문 텍스트에 실제로 존재하는 내용만 인용합니다.
+- 원문에 없는 텍스트를 만들어내거나, 보이지 않는 내용을 "있다"고 지적하는 것은 절대 금지입니다.
+- evidence 항목에는 원문에서 실제로 읽은 텍스트만 그대로 인용합니다. 없는 내용을 지어내면 안 됩니다.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[8단계 점검 알고리즘] ← 이 순서를 절대 변경·생략하지 마십시오
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+【1단계】 학년 구간 확인 및 자유학기제 예외 설정
+──────────────────────────────────────
+- 문서에 여러 학년이 포함된 경우, 각 학년의 페이지 구간을 파악합니다.
+- 각 학년의 평가 비율·성취기준·수행평가 항목은 해당 학년 구간 내 정보만으로 판단합니다.
+- 다른 학년의 정보를 혼용하여 판단하는 것은 절대 금지입니다.
+  예: 2학년 수행평가 비율을 판단할 때 3학년 평가 방침을 참조하면 안 됩니다.
+
+- 1학년(자유학기제) 구간에 해당하는 페이지에 대해서는 아래 항목 지적을 완전히 금지합니다:
+  ① 기본점수 존재 여부 및 범위
+  ② 수행평가 비율 30% 기준
+  ③ 서논술형 비율 30% 기준
+  ④ 부정행위 0점 처리 문구
+  ⑤ 루브릭에 숫자 점수가 없는 것 (1학년은 '매우 우수·우수·보통' 정성 척도가 정상)
+  ⑥ A~E 성취수준 등급 미기재
+  ⑦ 급간 불균등 (1학년 루브릭은 숫자 점수가 없으므로 급간 검증 자체 불가 → 지적 금지)
+  ⑧ 루브릭 총점 합산 오류 (1학년은 점수 없음 → 지적 금지)
+
+
+【2단계】🔥 수행평가 비율 및 배점 확인 (1학년 제외)
+──────────────────────────────────────
+▶ 규정: 수행평가는 과목 총점의 30% 이상 반영 필수 (중·고 전체).
+
+▶ [수행평가 배점 교차 검증 — 반드시 먼저 수행]
+  단일 영역 30% 초과 여부를 판단하기 전에, 각 수행평가 항목의 배점(만점점수)을 반드시 교차 확인합니다.
+  배점 확인 출처 (두 곳을 대조하여 일치하는 숫자를 사용):
+  ① 평가계획 총괄표(평가 계획 표): "만점점수" 또는 "배점" 열의 숫자
+  ② 수행평가 세부계획: 평가영역명 아래 괄호 안 숫자 (예: '친환경 자동차 만들기(30점)')
+  → 두 곳이 일치하면 그 숫자를 배점으로 사용합니다.
+  → 두 곳이 다르면 세부계획의 괄호 숫자를 우선합니다.
+  → 총괄표에 여러 수행평가 항목의 합산이 표시된 경우 개별 항목 배점과 혼동하지 마십시오.
+
+▶ 확인:
+  1) 교차 검증된 수행평가 총 반영 비율이 30% 미만이면 지적합니다.
+  2) 예외(정상 통과): 수행평가만으로 평가하는 과목, 또는 학교 규정에 근거가 명시된 경우.
+
+▶ 추가 확인: 수행평가만으로 평가하지 않는 과목에서 단일 영역이 과목 총점의 30% 초과 시 지적.
+  단, 단일 영역 배점은 반드시 위 교차 검증으로 확정된 숫자를 사용합니다.
+  "[N페이지] '(영역명)' 1개 영역 반영 비율이 과목 총점의 30%를 초과합니다."
+
+
+【3단계】🔥 서논술형 평가 비율 30% 이상 확인 (1학년 제외)
+──────────────────────────────────────
+▶ 규정: 서논술형 반영 비율은 학기 단위 과목 총점의 30% 이상 필수.
+▶ 인정 유형: ✅ 서술형, 논술형만 해당
+▶ 불인정 유형: ❌ 단답형, 완성형, 연결형, 선택형, OX형 → 서논술형 비율에 포함 불가
+
+▶ 확인 순서:
+  1) 먼저 수행평가 반영 비율을 확인합니다.
+  2) 수행평가 비율이 70% 이상인 경우 → 서논술형 30% 의무 면제 가능 → 정상 통과.
+     (단, 학업성적관리위원회 심의를 거친다는 근거가 없어도 비율 70% 이상이면 정상 통과)
+  3) 수행평가 비율이 70% 미만인 경우 → 서논술형 30% 이상인지 계산합니다.
+  4) 30% 미만이면 지적합니다.
+
+▶ 지적 형식:
+  "[N페이지] 수행평가 비율이 (N)%로 70% 미만인데, 서논술형 평가 비율이 약 (계산결과)%로
+  과목 총점의 30%에 미달합니다. 단답형·완성형·연결형은 서논술형으로 인정되지 않습니다.
+  정기시험 또는 수행평가에 서술형·논술형 문항을 추가하여 30% 이상을 확보하십시오."
+
+
+【4단계】🔥 루브릭 급간 불균등 및 총점 합산 검증 — 수학적 필수 검증
+──────────────────────────────────────
+반드시 뺄셈 계산을 실제로 수행하십시오. 눈으로 대충 보지 말고 숫자를 직접 빼십시오.
+
+▶ [검증 A] 각 평가 요소 내 급간 균등 여부 (요소별 독립 검증)
+  - 평가 요소(행) 하나씩 독립적으로 검증합니다. 요소 간 급간 비교는 하지 않습니다.
+  - 등급 수는 2단계, 3단계, 4단계 등 다양할 수 있습니다.
+  - 2단계 척도(점수가 2개뿐)는 급간 비교 자체가 불가능합니다 → 지적 금지.
+    예: 2 / 1 (2개 등급) → 급간 비교 대상 아님 → 정상 통과
+  - 3단계 이상인 경우에만 급간 균등 여부를 검증합니다.
+  - 한 요소 안의 모든 인접 등급 간 점수 차이(급간)가 동일한지 확인합니다.
+    예: 4단계 10/8/6/4 → 급간 모두 2 → 정상
+    예: 3단계 10/7/4 → 급간 모두 3 → 정상
+  - 급간이 하나라도 다르면 오류입니다. 반드시 지적합니다.
+  - 등급 수(3단계 vs 4단계)가 다른 것은 오류가 아닙니다. 지적 금지.
+
+  ▶ 정상 예시 (지적 금지):
+    - 협력 및 참여도: 2 / 1 → 2단계 척도 → 급간 비교 불가 → 정상
+    - 요소A: 12 / 10 / 8 / 6 → 급간 모두 2 → 정상
+    - 요소B: 5 / 3 / 1 → 급간 모두 2 → 정상
+
+  ▶ 오류 예시 (반드시 지적):
+    - 요소A: 10 / 8 / 4 → 급간 2, 4 → 불균등 → 오류
+    - 요소B: 12 / 10 / 8 / 5 → 급간 2, 2, 3 → 불균등 → 오류
+
+  ▶ 지적 형식:
+    "[N페이지] '(평가 항목명)' 루브릭의 '(요소명)' 요소에서 급간이 불균등합니다.
+    현재: (등급1) X / (등급2) Y / (등급3) Z → 급간 (X-Y), (Y-Z)로 다릅니다.
+    수정 방안:
+    - 급간 (X-Y)로 통일 시: X / Y / (Y-(X-Y)) 로 수정
+    - 급간 (Y-Z)로 통일 시: (Z+(Y-Z)*2) / (Z+(Y-Z)) / Z 로 수정"
+
+▶ [검증 C] 루브릭 등급별 채점기준 글 구분 검증
+  - 루브릭의 각 등급(매우우수/우수/보통/미흡)별 채점기준 텍스트가 실질적으로 구분되는지 확인합니다.
+  - 아래 경우 지적합니다:
+    ① 인접한 두 등급의 채점기준 텍스트가 완전히 동일한 경우
+    ② 등급 간 차이가 수량(예: "2가지" vs "3가지")이나 핵심 기준 없이 단순히
+       "미흡함" / "부족함" 표현만 바꾼 수준인 경우
+  - 아래 경우는 정상입니다. 지적 금지:
+    ① 수량 기준이 명확히 달라지는 경우 (예: "3가지 이상" vs "2가지" vs "1가지")
+    ② 수행 완성도 기준이 구체적으로 달라지는 경우
+  - 지적 형식:
+    "[N페이지] '(요소명)' 루브릭의 (매우우수/우수) 등급 채점기준이 사실상 동일하거나
+    구분이 불명확합니다. 등급별로 수행 수준의 차이가 명확히 드러나도록 기준을 구체화하십시오."
+  - 루브릭 내 각 평가요소의 배점(오른쪽 끝 열)을 합산합니다.
+  - 합산값이 해당 항목 총 배점과 일치하는지 확인합니다.
+  - 불일치하면 반드시 지적합니다.
+
+  ▶ 표 구조 이해 (핵심 — 반드시 숙지):
+    이 루브릭은 평가요소 1개가 아래처럼 2행으로 구성됩니다:
+    행1: 평가요소명 | 매우우수/우수/보통/미흡 채점기준 텍스트 | (배점)
+    행2: AI 도구 활용 가능(또는 불가) | 10 | 8 | 6 | 4 | 10
+
+    행2의 "AI 도구 활용 가능/불가"는 독립 평가요소가 아닙니다.
+    행2는 행1 평가요소의 등급별 점수(10/8/6/4)와 총 배점을 숫자로 표시하는 행입니다.
+    따라서 행1과 행2는 하나의 평가요소입니다.
+
+  ▶ 올바른 합산 방법:
+    - 평가요소 개수만큼 배점을 더합니다 (행2의 오른쪽 끝 숫자 하나씩).
+    - 행1·행2 각각의 숫자를 별도로 더하면 절대 안 됩니다 (2배가 됩니다).
+    - 예: 평가요소 3개 × 배점 10점 = 합계 30점 = 총 배점 30점 → 정상
+
+  ▶ 지적 형식:
+    "[N페이지] '(평가 항목명)' 루브릭의 각 평가요소 배점 합산이 (합산값)점인데,
+    해당 항목의 총 배점은 (총배점)점으로 차이가 납니다.
+    각 평가요소 배점을 재확인하여 일치시키십시오."
+
+▶ [검증 C] 루브릭 채점기준 텍스트 품질 검증
+  루브릭의 각 등급 채점기준 텍스트가 실제로 등급 간 차별성이 있는지 확인합니다.
+
+  ▶ 정상 (지적 금지):
+    - 등급마다 수행 수준(예: "모두", "2가지 이상", "1가지", "전혀" 등)이 명확히 다른 경우
+    - 상위 등급일수록 더 많은 요소·더 높은 완성도를 요구하는 경우
+    - 텍스트가 거의 같더라도 핵심 수식어("구체적으로", "일부", "미흡함" 등)로 차별화된 경우
+
+  ▶ 지적 대상:
+    A. 등급 간 텍스트가 사실상 동일한 경우
+       예: 매우우수와 우수의 채점기준 문구가 완전히 같은 경우
+    B. 상위 등급이 오히려 더 낮은 수준을 기술한 경우 (역전 기술)
+    C. 특정 등급의 채점기준이 아예 비어 있는 경우 (단, 1학년 자유학기제의 빈 셀은 정상)
+
+  ▶ 확인이 불확실하면 지적하지 않습니다. 명백한 경우에만 지적합니다.
+
+  ▶ 지적 형식:
+    "[N페이지] '(평가 항목명)' 루브릭의 '(요소명)' 요소에서
+    (매우우수/우수 등) 등급 간 채점기준이 명확히 구분되지 않습니다.
+    각 등급의 수행 수준 차이가 명확히 드러나도록 채점기준을 구체화하십시오."
+
+
+【5단계】🔥 기본점수 범위 및 역전 오류 점검 (1학년 제외)
+──────────────────────────────────────
+▶ 규정:
+  - 기본점수 = 수행평가 참여했으나 미제출 시 부여하는 최소 점수
+  - 권장 범위: 각 영역 만점의 20% 이상 ~ 40% 이하
+  - 고등학교 수행 100% 과목: 20% 이상 ~ 40% 미만
+
+▶ 절차:
+  1) 유의사항에서 기본점수 숫자를 반드시 찾습니다. (띄어쓰기 망가져도 숫자 추출)
+  2) 기본점수가 없으면 "기본점수 미기재"로 지적합니다.
+  3) 기본점수가 있으면 아래 세 가지를 모두 확인합니다:
+
+  [확인 A - 범위 검증]
+  - 영역 만점 × 0.2 ≤ 기본점수 ≤ 영역 만점 × 0.4 인지 계산합니다.
+  - 범위 밖이면 지적합니다.
+  - 지적 형식: "[N페이지] 기본점수 N점은 영역 만점(M점)의 (N/M×100)%입니다.
+    권장 범위(20~40%, 즉 ?~?점)를 벗어났습니다."
+
+  [확인 B - 역전 오류 검증: 기본점수 > 최하점수 합산인 경우] ← 반드시 잡아야 함
+  - 루브릭 각 요소의 최하 점수(보통/하 등급 점수)를 모두 더해 합산합니다.
+  - 기본점수 > 최하점수 합산 이면 역전 모순으로 지적합니다.
+  - 이유: 미제출자(기본점수)가 최저 수행자(최하점수 합산)보다 높은 점수를 받는
+    논리적 모순이 발생하기 때문입니다.
+  - 예: 각 요소 보통 점수가 4 + 3 + 3 = 최하점수 합 10점인데, 기본점수가 12점이면
+    → 아무것도 안 낸 학생이 최저 수행 학생보다 2점 높아지는 모순 → 지적
+  - 지적 형식: "[N페이지] 각 요소 최하점수(보통 등급) 합산은 M점인데,
+    미제출자 기본점수가 N점으로 최하점수 합산보다 높습니다.
+    기본점수는 반드시 최하점수 합산(M점) 이하로 설정해야 합니다.
+    → 기본점수를 M점 이하로 낮추거나, 각 요소의 보통 점수를 높여 최하합산을 N점 이상으로 조정하십시오."
+
+  [확인 C - 역전 오류 검증: 기본점수 < 최하점수 합산인 경우] ← 정상 통과
+  - 기본점수 ≤ 최하점수 합산 이면 정상입니다. 지적하지 마십시오.
+  - 예: 최하점수 합 10점, 기본점수 8점 → 정상 통과.
+
+
+【6단계】🔥 부정행위 처리 기준 문구 — 의미 기반 유연 탐지 (1학년 제외)
+──────────────────────────────────────
+▶ 탐지 범위: 유의사항란뿐 아니라 문서 전체(평가 방침, 평가 계획, 세부 계획 포함)에서 찾습니다.
+
+▶ 아래 키워드 중 하나라도 문서 전체 어디에든 문맥상 존재하면 무조건 '정상 통과':
+  "부정행위", "0점", "영점", "표절", "쓰기 윤리", "저작권",
+  "평가 윤리를 지키지 않은 경우", "정직하게", "공정성을 훼손",
+  "부정한 방법", "대리 작성", "비윤리적", "수행평가 윤리", "평가 윤리", "불이익"
+  (또는 의미가 동일한 표현 모두 포함)
+
+▶ 반드시 주의 — 없다고 확신할 수 없으면 지적하지 않습니다:
+  텍스트 추출 시 문구가 흩어지거나 잘릴 수 있습니다.
+  "부정행위" 또는 "0점" 관련 어떤 표현이라도 조금이라도 보이면 정상 통과로 처리합니다.
+  완전히 없다는 확신이 있을 때만 지적합니다.
+
+▶ 위 키워드가 전혀 없을 때만 지적합니다:
+  "[N페이지] 부정행위(표절, 저작권 위반, AI 무단 활용 등) 발생 시 처리 기준(0점 또는 불이익)이
+  유의사항란에 명시되어 있지 않습니다. 추가 기재가 필요합니다."
+
+
+【7단계】🔥 AI 활용 유의사항 문구 — 의미 기반 유연 탐지
+──────────────────────────────────────
+▶ 탐지 범위: 유의사항란뿐 아니라 문서 전체(AI 활용 학생 유의사항, 평가 방침, 세부 계획 포함)에서 찾습니다.
+
+▶ 아래 키워드 중 하나라도 문서 전체 어디에든 문맥상 존재하면 무조건 '정상 통과':
+  "인공지능", "AI", "챗GPT", "ChatGPT", "생성형 AI", "AI 도구",
+  "AI 활용 금지", "AI 사용 금지", "AI 활용", "AI 활용 불가",
+  "AI 사용 여부 표기", "AI 도구 활용 불가", "AI 도구 활용 금지", "생성형", "AI 금지"
+  (또는 의미가 동일한 표현 모두 포함)
+
+▶ 특히 주의: 아래 경우 모두 정상 통과입니다. 지적 금지.
+  - 평가 척도 표 안에 "AI 도구 활용 불가"가 점수 항목으로 기재된 경우
+  - "AI 활용 학생 유의사항" 항목이 별도 행으로 기재된 경우
+  - 단계별로 AI 허용/금지 범위가 기재된 경우 (예: "1단계: AI 검색 가능, 3단계: AI 금지")
+  - 평가 방침에 AI 관련 내용이 기재된 경우
+
+▶ 반드시 주의 — 없다고 확신할 수 없으면 지적하지 않습니다:
+  AI 관련 어떤 표현이라도 조금이라도 보이면 정상 통과로 처리합니다.
+  완전히 없다는 확신이 있을 때만 지적합니다.
+
+▶ 위 키워드가 전혀 없을 때만 지적합니다:
+  "[N페이지] AI 활용 관련 유의사항(활용 범위, 허용·금지 여부 등)이 기재되어 있지 않습니다.
+  2026학년도 지침에 따라 평가 시행 전 학생 유의사항 안내 내용을 추가 기재하십시오."
+
+
+【8단계】 나머지 규정 항목 전수 점검
+──────────────────────────────────────
+
+[8-1] 평가 방법·반영 비율 3중 교차 검증
+  ▶ '월별 평가계획', '평가계획(총괄표)', '평가 세부계획' 세 영역 비교.
+  ▶ 평가 방법(체크박스 ■ 포함: 서술형·논술형·실험·실습·포트폴리오 등)과 반영 비율이
+     세 영역에서 하나라도 다르면 지적합니다.
+  ▶ 체크박스 비교 시 반드시 각 문서에서 실제 ■/□ 기호를 직접 읽어 비교합니다.
+     추측으로 "다르다"고 판단하는 것은 절대 금지입니다.
+
+[8-2] 수행 100% + 3단위 이상 과목 → 3영역 이상 필수
+  ▶ 적용 대상: 수행평가 100% 과목 중 주당 3단위(3시간/3학점) 이상인 과목만 해당합니다.
+     자유학기제(1학년)도 수행 100%이므로 이 조건이 적용됩니다.
+  ▶ 수행평가 100%가 아닌 과목(정기시험이 있는 과목)은 이 조건 적용 대상이 아닙니다 → 지적 금지.
+  ▶ 수행 100% + 2단위 이하 과목은 2개 영역도 허용 → 지적 금지.
+  ▶ 판단 기준 (반드시 준수):
+    - 영역 수가 정확히 1개이면 → 지적
+    - 영역 수가 정확히 2개이면 → 지적
+    - 영역 수가 3개이면 → ✅ 정상 통과. 절대 지적 금지.
+    - 영역 수가 4개 이상이면 → ✅ 정상 통과. 절대 지적 금지.
+  ▶ "3개 영역 = 3개 이상 조건 충족 = 정상" 입니다. 3개를 "부족"으로 판단하는 것은 오류입니다.
+
+[8-3] 과학 교과 실험(탐구) 50% 의무 비율
+  ▶ 과학 교과는 전체 수행평가의 50% 이상을 실험(탐구)으로 반영해야 합니다.
+  ▶ 예외(지적 금지): '과학의 역사와 문화' 등 실험 내용 없는 과목, 고3 과목.
+  ▶ 50% 미달 시 지적합니다.
+
+[8-4] 시수(수업 횟수) 계산 확인
+  ▶ 월별 계획의 시수/누계가 기재된 경우 최종 누계와 주당시수 × 17주를 비교합니다.
+  ▶ 학기 범위:
+    - 1학기: 3월~7월 (5개월) — 7월 시수도 반드시 포함합니다.
+    - 2학기: 8월~2월 (7개월) — 방학 후 9월 시작 시 9월~2월로 계산합니다.
+  ▶ 확인 방법: 월별 시수를 모두 합산하거나, 마지막 달의 누계 값을 사용합니다.
+     중간 월의 누계만 보고 모자라다고 판단하는 것은 절대 금지입니다.
+     예: 6월까지 누계가 28시수여도 7월 6시수가 남아 총 34시수면 정상입니다.
+  ▶ 주당 시수 × 17주 기준 (±2시수 이내 정상):
+     2시간: 34시수 / 3시간: 51시수 / 4시간: 68시수
+  ▶ 최종 누계가 기준 시수보다 3시수 이상 차이 날 때만 지적합니다.
+
+[8-5] 오타·학년·과목명 불일치 탐지
+  ▶ 문서 제목 학년과 본문 표 학년이 다른 경우 지적합니다. (복붙 오류)
+  ▶ 교과명·단원명 오기재, 동일 문서 내 과목명 혼용, 명백한 한글 오타를 지적합니다.
+  ▶ 반드시 원문에 실제로 존재하는 텍스트를 인용하여 지적합니다.
+     원문에 없는 평가요소명이나 항목명을 만들어내서 지적하는 것은 절대 금지입니다.
+  ▶ 지적이 불확실하면 지적하지 않습니다. 확실한 경우에만 지적합니다.
+
+[8-6] 성취기준 코드 연계 확인
+  ▶ 세부계획의 성취기준 코드가 월별 계획 목록에 1개라도 포함되면 정상 통과.
+  ▶ 전혀 관련 없는 코드가 사용된 경우에만 지적합니다.
+
+[8-7] 정기시험 횟수 확인
+  ▶ 정기시험 학기당 2회 이상 원칙.
+  ▶ 예외 처리 (아래 순서로 반드시 수행평가 비율을 먼저 확인하고 판단):
+    - 수행평가 비율 60% 이상 ~ 100% 미만: 정기시험 1회도 허용 → 정상 통과.
+    - 수행평가 100%: 정기시험 없어도 정상 통과.
+    - 수행평가 비율 60% 미만인데 정기시험 1회: 규정 위반 → 지적.
+  ▶ 지적 형식:
+    "[N페이지] 수행평가 비율이 (N)%로 60% 미만인데 정기시험이 1회로 계획되어 있습니다.
+    수행평가 비율이 60% 미만인 경우 정기시험은 학기당 2회 이상 실시해야 합니다."
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[출력 규칙]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. 지적 사항마다 "[N페이지]" 형식으로 페이지 번호를 반드시 명시합니다.
+2. 추측으로 지적하지 말고 문서에서 실제 확인된 근거만 인용합니다.
+3. evidence에는 원문에서 실제로 읽은 텍스트만 인용합니다. 원문에 없는 내용을 만들어내는 것은 심각한 오류입니다.
+4. 두 가지 오류를 모두 피합니다:
+   ① 없는 내용을 있다고 지적하는 것 (오지적) — 절대 금지
+   ② 있는 내용을 없다고 지적하는 것 (미지적) — 절대 금지
+   특히 부정행위 문구, AI 활용 문구, 기본점수 등은 문서 전체를 꼼꼼히 읽은 후 판단합니다.
+   텍스트 추출 시 흩어지거나 잘릴 수 있으므로, 조금이라도 해당 내용이 보이면 정상 통과입니다.
+5. 확실하지 않은 내용은 지적하지 않습니다. 오지적과 미지적 모두 동등하게 나쁩니다.
+6. JSON 외의 텍스트는 절대 출력하지 마십시오.
+7. 아래 JSON 형식으로만 응답하십시오:
+
+{
+  "summary": "종합 평가 요약 (2~4문장, 주요 지적 건수 포함)",
+  "strengths": ["잘 설계된 부분이나 규정을 잘 지킨 사항 (구체적으로)"],
+  "issues": [
+    {
+      "category": "분류 (수행평가비율 / 서논술형비율 / 급간불일치 / 루브릭텍스트불명확 / 기본점수범위 / 기본점수역전 / 기본점수미기재 / 부정행위문구누락 / AI문구누락 / 평가방법불일치 / 영역수부족 / 실험비율미달 / 시수오류 / 오타학년오류 / 정기시험횟수 / 기타 중 하나)",
+      "problem": "[N페이지] 구체적 문제 설명",
+      "evidence": "문서 내 실제 근거 텍스트 (끊겨 있어도 의미 이어서 인용)",
+      "action": "수정 지시 + 실제 예시 문장 또는 계산 수치 포함"
+    }
+  ],
+  "final_checklist": ["최종 제출 전 담당 교사가 직접 확인해야 할 항목"]
+}`;
+}
+
+// 학년별 페이지 범위 감지 — "N학년" 헤더가 나타나는 페이지부터 다음 학년 헤더 전까지
+function detectGradeRanges(fullText) {
+    const pageBlocks = fullText.split(/(--- PAGE \d+ ---)/);
+    const ranges = []; // [{grade, startPage, endPage}]
+    let currentGrade = null;
+    let currentStart = 1;
+    let lastPage = 1;
+
+    for (let i = 0; i < pageBlocks.length; i++) {
+        const match = pageBlocks[i].match(/--- PAGE (\d+) ---/);
+        if (match) {
+            const pageNum = parseInt(match[1]);
+            const blockText = pageBlocks[i + 1] || "";
+            lastPage = pageNum;
+
+            // "N학년" 헤더 감지 — 제목이나 표 안의 학년 표시
+            // "2026학년도 (N)학년" 또는 "학년 N" 패턴
+            const gradeMatch = blockText.match(/\(([1-3])\)\s*학년|([1-3])\s*학년\s*기술|([1-3])\s*학년\s*과목|학년\s*\|\s*([1-3])/);
+            if (gradeMatch) {
+                const newGrade = (gradeMatch[1] || gradeMatch[2] || gradeMatch[3] || gradeMatch[4]) + "학년";
+                if (newGrade !== currentGrade) {
+                    if (currentGrade) {
+                        ranges.push({ grade: currentGrade, start: currentStart, end: pageNum - 1 });
+                    }
+                    currentGrade = newGrade;
+                    currentStart = pageNum;
+                }
+            }
+            i++;
+        }
+    }
+    if (currentGrade) {
+        ranges.push({ grade: currentGrade, start: currentStart, end: lastPage });
+    }
+    return ranges;
+}
+
+function getGradeForPage(ranges, pageNum) {
+    for (const r of ranges) {
+        if (pageNum >= r.start && pageNum <= r.end) return r.grade;
+    }
+    return "";
+}
+
+// =========================================================
+// Gemini API 호출 공통
+// =========================================================
+async function geminiPost(payload) {
+    // 현재 사용 가능한 모델 (2026년 3월 기준)
+    const modelList = [
+        "gemini-2.5-flash",           // stable — 메인
+        "gemini-2.5-flash-lite",      // 경량 fallback
+        "gemini-2.0-flash",           // 2026년 6월 이전 퇴역 예정
+    ];
+    let lastError;
+    for (const model of modelList) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.status === 404) { console.warn(`모델 ${model} 없음`); continue; }
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`HTTP ${res.status}: ${errText}`);
+            }
+            const result = await res.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) {
+                const reason = result.candidates?.[0]?.finishReason;
+                throw new Error(`응답 비어있음 (finishReason: ${reason || '알 수 없음'})`);
+            }
+            console.log(`✅ 사용 모델: ${model}`);
+            return text;
+        } catch (e) {
+            if (e.message.includes('403') || e.message.includes('400')) throw e;
+            lastError = e;
+            if (!e.message.includes('404') && !e.message.includes('없음')) {
+                for (let i = 0; i < 3; i++) {
+                    await new Promise(r => setTimeout(r, [2000,4000,8000][i]));
+                    try {
+                        const res2 = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                        if (!res2.ok) break;
+                        const r2 = await res2.json();
+                        const t2 = r2.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (t2) { console.log(`✅ 재시도 성공: ${model}`); return t2; }
+                    } catch {}
+                }
+            }
+        }
+    }
+    throw lastError || new Error("사용 가능한 모델 없음. API 키 또는 네트워크를 확인해 주세요.");
+}
+
+// =========================================================
+// Gemini API 호출 — 텍스트 기반 (학년 구간 명시 포함)
+// =========================================================
+async function callGeminiAPI(fullText) {
+    const ruleContext = customRuleText.trim() !== ""
+        ? document.getElementById('custom-rule-name').innerText
+        : "2026학년도 대전시 학업성적관리 지침";
+
+    // 학년별 페이지 범위 감지 → 학년 혼동 방지용 컨텍스트
+    const gradeRanges = detectGradeRanges(fullText);
+    const gradeMapText = gradeRanges.length > 0
+        ? gradeRanges.map(r => `  ${r.grade}: ${r.start}~${r.end}페이지`).join('\n')
+        : "  (학년 구분 감지 불가)";
+
+    const systemPrompt = buildSystemPrompt(customRuleText);
+
+    // 핵심 영역 전처리 → 토큰 절감
+    const processedText = preprocessText(fullText);
+    console.log(`📄 원문: ${fullText.length}자 → 전처리 후: ${processedText.length}자 (${Math.round((1 - processedText.length/fullText.length)*100)}% 절감)`);
+
+    const userText = `[평가계획서 원문]
+
+■ 이 문서의 학년별 페이지 구간 (반드시 준수)
+${gradeMapText}
+  → 각 학년의 평가 비율·성취기준·수행평가 항목은 해당 학년 구간 내 정보만으로 판단하십시오.
+  → 다른 학년의 정보를 절대 혼용하지 마십시오.
+
+■ 루브릭 표 읽기 주의사항 (탭 문자로 열이 구분됩니다)
+  이 문서의 루브릭은 평가요소 1개가 2행으로 구성됩니다:
+  행1: 평가요소명 | 매우우수/우수/보통/미흡 채점기준 텍스트 | (배점)
+  행2: AI 도구 활용 가능(또는 불가) | 10 | 8 | 6 | 4 | 10
+  행2는 행1 평가요소의 등급별 점수와 배점을 숫자로 표시하는 행입니다.
+  배점 합산 시 행1과 행2를 하나의 평가요소로 취급하고 배점을 중복 합산하지 마십시오.
+
+[원문 시작]
+${processedText.substring(0, 80000)}
+[원문 끝]`;
+
+    const payload = {
+        contents: [{ parts: [{ text: userText }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
+    };
+
+    const raw = await geminiPost(payload);
+    return { data: safeJSONParse(raw), ruleName: ruleContext };
+}
+
+// =========================================================
+// 점검 시작 — 단일/ZIP 분기
+// =========================================================
+async function startAIInspection() {
+    if (currentMode === 'zip') {
+        await startBatchInspection();
+    } else {
+        await startSingleInspection();
+    }
+}
+
+async function startSingleInspection() {
+    const planFile = document.getElementById('plan-file');
+    if (planFile.files.length === 0) {
+        alert('📄 점검할 평가계획서 PDF 파일을 먼저 첨부해 주세요.');
+        return;
+    }
+    const btn = document.getElementById('submit-btn');
+    const loading = document.getElementById('loading-section');
+    btn.style.display = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    loading.style.display = 'block';
+    startLoadingMessages();
+    try {
+        const fullText = await extractTextFromPDF(planFile.files[0]);
+        const resultObj = await callGeminiAPI(fullText);
+        renderResults(resultObj.data, resultObj.ruleName);
+        stopLoadingMessages();
+        loading.style.display = 'none';
+        document.getElementById('results-section').style.display = 'block';
+        const today = new Date();
+        document.getElementById('report-date').innerText =
+            `${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일`;
+        document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+        stopLoadingMessages();
+        console.error("오류:", error);
+        const msg = error.message || '';
+        if (msg.includes('403')) {
+            alert("❌ API 키 오류 (403)\nAPI 키가 잘못되었거나 권한이 없습니다.\n코드의 apiKey 값을 확인해 주세요.");
+        } else if (msg.includes('400')) {
+            alert("❌ 요청 오류 (400)\n문서가 너무 크거나 형식 문제일 수 있습니다.\n파일 크기를 줄이거나 잠시 후 다시 시도해 주세요.");
+        } else if (msg.includes('429')) {
+            alert("❌ 요청 한도 초과 (429)\nAPI 호출 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.");
+        } else if (msg.includes('500') || msg.includes('503')) {
+            alert("❌ Gemini 서버 오류\nGemini 서버에 일시적 문제가 있습니다. 잠시 후 다시 시도해 주세요.");
+        } else if (msg.includes('finishReason')) {
+            alert(`❌ AI 응답 오류\n${msg}\n문서가 너무 길 수 있습니다. 잠시 후 다시 시도해 주세요.`);
+        } else {
+            alert(`❌ AI 분석 중 오류가 발생했습니다.\n${msg}\n잠시 후 다시 시도해 주세요.`);
+        }
+        btn.style.display = 'flex';
+        loading.style.display = 'none';
+    }
+}
+
+async function startBatchInspection() {
+    if (zipPdfFiles.length === 0) {
+        alert('📦 ZIP 파일을 먼저 업로드해 주세요.');
+        return;
+    }
+    const btn = document.getElementById('submit-btn');
+    const loading = document.getElementById('loading-section');
+    const el = document.getElementById('loading-text');
+    btn.style.display = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    loading.style.display = 'block';
+
+    const batchResults = []; // {name, data, ruleName, error}
+    const total = zipPdfFiles.length;
+
+    for (let i = 0; i < total; i++) {
+        const { name, arrayBuffer } = zipPdfFiles[i];
+        el.innerText = `[${i+1}/${total}] "${name}" 점검 중...`;
+        try {
+            const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+            const fullText = await extractTextFromPDF(blob);
+            const resultObj = await callGeminiAPI(fullText);
+            batchResults.push({ name, data: resultObj.data, ruleName: resultObj.ruleName, error: null });
+        } catch(e) {
+            console.error(`"${name}" 오류:`, e);
+            batchResults.push({ name, data: null, ruleName: null, error: e.message });
+        }
+    }
+
+    el.innerText = "모든 과목 점검 완료! 결과를 정리하는 중...";
+    renderBatchResults(batchResults);
+    loading.style.display = 'none';
+    document.getElementById('results-section').style.display = 'block';
+    const today = new Date();
+    document.getElementById('report-date').innerText =
+        `${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일`;
+    document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+    btn.style.display = 'flex';
+}
+
+// =========================================================
+// 배치 결과 렌더링 — 과목별 아코디언
+// =========================================================
+function renderBatchResults(batchResults) {
+    window._batchResults = batchResults; // 인쇄용 보관
+    document.getElementById('report-rule').innerText = "2026학년도 대전시 학업성적관리 지침";
+    document.getElementById('pdf-summary').innerHTML = '';
+    document.getElementById('pdf-strengths').innerHTML = '';
+    document.getElementById('pdf-issues').innerHTML = '';
+    document.getElementById('pdf-checklist').innerHTML = '';
+
+    const total = batchResults.length;
+    const errCount = batchResults.filter(r => r.error).length;
+    const issueCount = batchResults.filter(r => r.data && r.data.issues && r.data.issues.length > 0).length;
+
+    globalTextResult = `[평가계획서 AI 점검 리포트 v4.3 — 일괄 처리]\n총 ${total}개 과목 / 지적사항 있음: ${issueCount}개 과목 / 오류: ${errCount}개\n\n`;
+
+    let html = `
+    <div style="background:var(--primary-bg); border-radius:8px; padding:12px 16px; margin-bottom:20px; font-size:0.95rem;">
+        📊 총 <strong>${total}개 과목</strong> 점검 완료 &nbsp;|&nbsp;
+        🚨 지적사항 있음: <strong>${issueCount}개 과목</strong> &nbsp;|&nbsp;
+        ${errCount > 0 ? `⚠️ 오류: <strong>${errCount}개</strong>` : '✅ 오류 없음'}
+    </div>`;
+
+    batchResults.forEach((result, idx) => {
+        const { name, data, error } = result;
+        const hasIssues = data && data.issues && data.issues.length > 0;
+        const statusIcon = error ? '⚠️' : hasIssues ? '🚨' : '✅';
+        const statusColor = error ? '#f57c00' : hasIssues ? 'var(--danger)' : 'var(--primary)';
+        const statusText = error ? '오류' : hasIssues ? `지적 ${data.issues.length}건` : '이상 없음';
+        const accordionId = `accordion-${idx}`;
+
+        html += `
+        <div style="border:1px solid var(--border-color); border-radius:8px; margin-bottom:10px; overflow:hidden;">
+            <button onclick="toggleAccordion('${accordionId}')"
+                style="width:100%; padding:14px 16px; background:var(--bg-white); border:none; text-align:left;
+                       cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:1rem;">
+                <span style="font-weight:700;">${statusIcon} ${name}</span>
+                <span style="color:${statusColor}; font-size:0.9rem; font-weight:600;">${statusText} ▼</span>
+            </button>
+            <div id="${accordionId}" style="display:none; padding:16px; border-top:1px solid var(--border-color); background:#fafafa;">`;
+
+        if (error) {
+            html += `<p style="color:#f57c00;">⚠️ 오류 발생: ${error}</p>`;
+            globalTextResult += `\n${'='.repeat(50)}\n【${name}】 오류: ${error}\n`;
+        } else {
+            globalTextResult += `\n${'='.repeat(50)}\n【${name}】\n`;
+            // 요약
+            const summary = data.summary || '요약 없음';
+            html += `<div style="margin-bottom:12px;"><strong style="color:var(--primary);">■ 종합 요약</strong><p style="margin:6px 0;">${summary}</p></div>`;
+            globalTextResult += `■ 종합 요약\n${summary}\n\n`;
+
+            // 지적사항
+            if (hasIssues) {
+                html += `<div><strong style="color:var(--danger);">🚨 지적사항 (${data.issues.length}건)</strong>`;
+                data.issues.forEach((issue, i) => {
+                    html += `
+                    <div style="background:var(--danger-bg); border-left:4px solid var(--danger); padding:10px 12px; margin:8px 0; border-radius:0 6px 6px 0;">
+                        <span style="background:var(--danger); color:white; padding:2px 6px; border-radius:3px; font-size:0.8em; font-weight:bold;">${issue.category}</span>
+                        <div style="color:var(--danger); font-weight:700; margin:6px 0 4px;">${i+1}. ${issue.problem}</div>
+                        <div style="color:#666; font-size:0.9em; font-style:italic; margin-bottom:6px;">"${issue.evidence}"</div>
+                        <div style="color:var(--danger); font-weight:600;">▶ ${issue.action}</div>
+                    </div>`;
+                    globalTextResult += `${i+1}. [${issue.category}] ${issue.problem}\n   근거: "${issue.evidence}"\n   조치: ${issue.action}\n\n`;
+                });
+                html += `</div>`;
+            } else {
+                html += `<p style="color:var(--primary); font-weight:600;">✅ 발견된 지적사항이 없습니다.</p>`;
+                globalTextResult += `✅ 지적사항 없음\n`;
+            }
+        }
+
+        html += `</div></div>`;
+    });
+
+    document.getElementById('main-result-box').innerHTML = html;
+    document.getElementById('hidden-copy-area').value = globalTextResult;
+}
+
+function toggleAccordion(id) {
+    const el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// =========================================================
+// 결과 렌더링 (단일 파일용)
+// =========================================================
+function renderResults(data, ruleName) {
+    document.getElementById('report-rule').innerText = ruleName;
+    document.getElementById('pdf-summary').innerHTML = '';
+    document.getElementById('pdf-strengths').innerHTML = '';
+    document.getElementById('pdf-issues').innerHTML = '';
+    document.getElementById('pdf-checklist').innerHTML = '';
+    document.getElementById('pdf-checklist-result').innerHTML = '';
+
+    globalTextResult = `[평가계획서 AI 점검 리포트 v4.3]\n▶ 적용 기준: ${ruleName}\n\n`;
+    let html = `<div style="text-align:right; font-size:0.9em; color:#666; margin-bottom:15px;">적용 기준: ${ruleName}</div>`;
+
+    // 1. 종합 요약
+    const summary = data.summary || '요약 없음';
+    globalTextResult += `■ 종합 요약\n${summary}\n\n`;
+    html += `<h3 style="color:var(--primary); margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:5px;">■ 종합 요약</h3><p>${summary}</p>`;
+    document.getElementById('pdf-summary').innerText = summary;
+
+    // 2. 점검 결과 체크리스트 (issues 기반 자동 생성)
+    const issues = data.issues || [];
+    const issuedCats = new Set(issues.map(i => i.category));
+    const allCheckItems = [
+        '수행평가비율','서논술형비율','급간불일치','루브릭텍스트불명확',
+        '기본점수범위','기본점수역전','기본점수미기재',
+        '부정행위문구누락','AI문구누락',
+        '평가방법불일치','영역수부족','실험비율미달',
+        '시수오류','오타학년오류','정기시험횟수'
+    ];
+    globalTextResult += `■ 점검 결과 체크리스트\n`;
+    html += `<h3 style="color:var(--primary); margin-top:25px; margin-bottom:10px; border-bottom:2px solid var(--border-color); padding-bottom:5px;">■ 점검 결과 체크리스트</h3>`;
+    html += `<div style="background:var(--primary-bg); border-radius:8px; padding:12px 16px;">`;
+    let pdfCheckHtml = `<div style="padding:4px 0;">`;
+
+    allCheckItems.forEach(cat => {
+        if (issuedCats.has(cat)) {
+            html += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.06);">
+                <span>❌</span><strong style="color:var(--danger);">${cat}</strong>
+                <span style="color:var(--danger);font-size:0.9em;">— 수정 필요</span></div>`;
+            pdfCheckHtml += `<div style="padding:2px 0;font-size:10.5pt;">❌ <strong style="color:#d32f2f;">${cat}</strong> — 수정 필요</div>`;
+            globalTextResult += `❌ ${cat} — 수정 필요\n`;
+        } else {
+            html += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.06);">
+                <span>✅</span><strong>${cat}</strong></div>`;
+            pdfCheckHtml += `<div style="padding:2px 0;font-size:10.5pt;">✅ <strong>${cat}</strong></div>`;
+            globalTextResult += `✅ ${cat}\n`;
+        }
+    });
+    issues.filter(i => !allCheckItems.includes(i.category)).forEach(issue => {
+        const cat = issue.category || '기타';
+        html += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.06);">
+            <span>❌</span><strong style="color:var(--danger);">${cat}</strong>
+            <span style="color:var(--danger);font-size:0.9em;">— 수정 필요</span></div>`;
+        pdfCheckHtml += `<div style="padding:2px 0;font-size:10.5pt;">❌ <strong style="color:#d32f2f;">${cat}</strong> — 수정 필요</div>`;
+        globalTextResult += `❌ ${cat} — 수정 필요\n`;
+    });
+    html += `</div>`;
+    pdfCheckHtml += `</div>`;
+    document.getElementById('pdf-checklist-result').innerHTML = pdfCheckHtml;
+    globalTextResult += `\n`;
+
+    // 3. 지적사항 (상세)
+    globalTextResult += `■ 필수 수정 및 개선 필요 사항\n`;
+    html += `<h3 style="color:var(--danger); margin-top:25px; margin-bottom:10px; border-bottom:2px solid var(--danger); padding-bottom:5px;">🚨 필수 수정 및 개선 필요 사항</h3>`;
+    if (issues.length > 0) {
+        issues.forEach((issue, idx) => {
+            const n = idx + 1;
+            const cat = issue.category || '기타';
+            const prob = issue.problem || '문제 내용 없음';
+            const ev = issue.evidence || '근거 없음';
+            const act = issue.action || '조치 제안 없음';
+            document.getElementById('pdf-issues').innerHTML += `
+                <div class="pdf-issue-item">
+                    <span class="badge-category">${cat}</span> <span>${n}. ${prob}</span>
+                    <div style="margin-top:5px;font-size:10pt;color:#555;">"근거: ${ev}"</div>
+                    <div style="margin-top:5px;font-weight:bold;">▶ 필수 조치: ${act}</div>
+                </div>`;
+            html += `<div style="background-color:var(--danger-bg);border-left:5px solid var(--danger);padding:15px;margin-bottom:15px;border-radius:0 8px 8px 0;">
+                <span style="background-color:var(--danger);color:white;padding:3px 8px;border-radius:4px;font-size:0.85em;font-weight:bold;display:inline-block;margin-bottom:8px;">${cat}</span>
+                <div style="color:var(--danger);font-size:1.1em;font-weight:900;margin-bottom:8px;">${n}. ${prob}</div>
+                <div style="color:#666;font-size:0.95em;font-style:italic;margin-bottom:10px;">"근거: ${ev}"</div>
+                <div style="color:var(--danger);font-weight:bold;">▶ 필수 조치:<br>
+                    <span style="color:#000;font-weight:normal;display:block;margin-top:4px;">${act}</span>
+                </div></div>`;
+            globalTextResult += `${n}. [${cat}] ${prob}\n   - 근거: "${ev}"\n   - 조치: ${act}\n\n`;
+        });
+    } else {
+        document.getElementById('pdf-issues').innerHTML = `<div class="pdf-issue-item" style="border-left-color:var(--primary);background-color:var(--primary-bg);">
+            <span style="color:var(--primary);font-weight:bold;">발견된 주요 문제점이 없습니다.</span></div>`;
+        html += `<div style="background-color:var(--primary-bg);border-left:5px solid var(--primary);padding:15px;border-radius:0 8px 8px 0;font-weight:bold;color:var(--primary);">
+            발견된 필수 수정 사항이 없습니다. 잘 작성되었습니다.</div>`;
+        globalTextResult += "발견된 주요 문제점이 없습니다.\n\n";
+    }
+
+    // 4. 우수사항
+    globalTextResult += `■ 우수 사항\n`;
+    html += `<h3 style="color:var(--primary);margin-top:25px;margin-bottom:10px;border-bottom:2px solid var(--border-color);padding-bottom:5px;">■ 우수 사항</h3><ul>`;
+    if (data.strengths && data.strengths.length > 0) {
+        data.strengths.forEach(item => {
+            document.getElementById('pdf-strengths').innerHTML += `<li>${item}</li>`;
+            globalTextResult += `- ${item}\n`;
+            html += `<li style="margin-bottom:6px;">${item}</li>`;
+        });
+    } else {
+        html += `<li>특이 사항 없음</li>`;
+        globalTextResult += `- 특이 사항 없음\n`;
+    }
+    html += `</ul>`;
+    globalTextResult += `\n`;
+
+    // 5. 최종 체크리스트
+    globalTextResult += `■ 최종 제출 전 점검 체크리스트\n`;
+    html += `<h3 style="color:var(--primary);margin-top:25px;margin-bottom:10px;border-bottom:2px solid var(--border-color);padding-bottom:5px;">■ 최종 제출 전 직접 확인 항목</h3>`;
+    html += `<div style="font-size:0.85em;color:var(--text-gray);margin-bottom:8px;">✏️ 항목을 클릭하면 체크됩니다.</div>`;
+    html += `<ul style="list-style:none;padding:0;margin:0;">`;
+    if (data.final_checklist && data.final_checklist.length > 0) {
+        data.final_checklist.forEach((item, idx) => {
+            const id = `chk-${idx}`;
+            html += `<li style="margin-bottom:8px;display:flex;align-items:flex-start;gap:8px;cursor:pointer;" onclick="toggleCheck('${id}')">
+                <span id="${id}" style="font-size:1.2em;flex-shrink:0;user-select:none;">☐</span>
+                <span>${item}</span></li>`;
+            globalTextResult += `- [ ] ${item}\n`;
+            document.getElementById('pdf-checklist').innerHTML += `<li id="pdf-${id}">☐ ${item}</li>`;
+        });
+    } else {
+        html += `<li>확인 항목 없음</li>`;
+    }
+    html += `</ul>`;
+
+    document.getElementById('main-result-box').innerHTML = html;
+    document.getElementById('hidden-copy-area').value = globalTextResult;
+    window._lastRenderData = data;
+}
+
+function toggleCheck(id) {
+    const screen = document.getElementById(id);
+    const pdf = document.getElementById('pdf-' + id);
+    if (!screen) return;
+    const checked = screen.innerText === '☑';
+    screen.innerText = checked ? '☐' : '☑';
+    screen.style.color = checked ? '' : '#2e7d32';
+    if (pdf) pdf.firstChild.textContent = checked ? '☐' : '☑';
+}
+
+function copyToClipboard() {
+    const ta = document.getElementById('hidden-copy-area');
+    ta.style.display = 'block';
+    ta.select();
+    ta.setSelectionRange(0, 99999);
+    try {
+        document.execCommand('copy');
+        alert("결과 텍스트가 복사되었습니다.");
+    } catch {
+        alert("복사 실패. 직접 드래그하여 복사해주세요.");
+    } finally {
+        ta.style.display = 'none';
+    }
+}
+
+function generatePDF() {
+    if (currentMode === 'zip') {
+        generateBatchPDF();
+    } else {
+        const tpl = document.getElementById('pdf-template');
+        tpl.style.display = 'block';
+        window.print();
+        setTimeout(() => { tpl.style.display = 'none'; }, 1000);
+    }
+}
+
+function generateBatchPDF() {
+    if (!window._batchResults || window._batchResults.length === 0) {
+        alert('인쇄할 결과가 없습니다.');
+        return;
+    }
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일`;
+    const tpl = document.getElementById('pdf-template');
+    const cats = ['수행평가비율','서논술형비율','급간불일치','루브릭텍스트불명확','기본점수범위','기본점수역전','기본점수미기재','부정행위문구누락','AI문구누락','평가방법불일치','영역수부족','실험비율미달','시수오류','오타학년오류','정기시험횟수'];
+
+    let html = '';
+    window._batchResults.forEach((result, idx) => {
+        const { name, data, error } = result;
+        html += `<div${idx > 0 ? ' class="pdf-page-break"' : ''}>`;
+        html += `<div class="pdf-header">평가계획서 AI 점검 결과 리포트</div>`;
+        html += `<div style="text-align:right;margin-bottom:8px;font-size:10pt;">${dateStr} | 과목: <strong>${name}</strong></div>`;
+        html += `<div class="pdf-warning">⚠ 본 결과는 AI 기반 참고용 점검 가이드입니다.</div>`;
+        if (error) {
+            html += `<div style="color:#d35400;padding:20px;">⚠ 오류: ${error}</div>`;
+        } else {
+            html += `<div class="pdf-section-title">1. 종합 요약</div><div class="pdf-content-box">${data.summary||'요약 없음'}</div>`;
+            html += `<div class="pdf-section-title">2. 점검 결과 체크리스트</div><div style="padding:4px 0;">`;
+            const issued = new Set((data.issues||[]).map(i => i.category));
+            cats.forEach(cat => {
+                html += issued.has(cat)
+                    ? `<div style="padding:2px 0;font-size:10.5pt;">❌ <strong style="color:#d32f2f;">${cat}</strong> — 수정 필요</div>`
+                    : `<div style="padding:2px 0;font-size:10.5pt;">✅ <strong>${cat}</strong></div>`;
+            });
+            html += `</div>`;
+            html += `<div class="pdf-section-title">3. 🚨 필수 수정 및 개선 필요 사항 (${(data.issues||[]).length}건)</div>`;
+            if (!data.issues || data.issues.length === 0) {
+                html += `<div class="pdf-content-box" style="color:#2e7d32;font-weight:bold;">✅ 발견된 지적사항이 없습니다.</div>`;
+            } else {
+                data.issues.forEach((issue, i) => {
+                    html += `<div class="pdf-issue-item"><span class="badge-category">${issue.category}</span> <strong>${i+1}. ${issue.problem}</strong><br><span style="color:#666;font-style:italic;">"${issue.evidence}"</span><br><span style="color:#d35400;font-weight:600;">▶ ${issue.action}</span></div>`;
+                });
+            }
+            if (data.final_checklist && data.final_checklist.length > 0) {
+                html += `<div class="pdf-section-title">4. 최종 확인 항목</div><ul class="pdf-list">`;
+                data.final_checklist.forEach(c => { html += `<li>☐ ${c}</li>`; });
+                html += `</ul>`;
+            }
+        }
+        html += `</div>`;
+    });
+
+    tpl.innerHTML = html;
+    tpl.style.display = 'block';
+    window.print();
+
+    setTimeout(() => {
+        tpl.style.display = 'none';
+        tpl.innerHTML = `
+        <div class="pdf-header">평가계획서 AI 점검 결과 리포트 (v4.3)</div>
+        <div style="text-align:right;margin-bottom:10px;font-size:10pt;">
+            분석 일시: <span id="report-date"></span><br>
+            적용 기준: <span id="report-rule">대전광역시 기준</span>
+        </div>
+        <div class="pdf-warning">⚠ 본 결과는 AI 기반 참고용 점검 가이드입니다.<br>최종 판단은 학교 규정 및 교육청 지침에 따라 교사가 직접 확인해야 합니다.</div>
+        <div class="pdf-section-title">1. 종합 평가 요약</div>
+        <div class="pdf-content-box" id="pdf-summary"></div>
+        <div class="pdf-section-title">2. 점검 결과 체크리스트</div>
+        <div id="pdf-checklist-result"></div>
+        <div class="pdf-section-title">3. 우수 사항</div>
+        <ul class="pdf-list" id="pdf-strengths"></ul>
+        <div class="pdf-section-title">4. 🚨 필수 수정 및 개선 필요 사항</div>
+        <div id="pdf-issues"></div>
+        <div class="pdf-section-title">5. 최종 제출 전 직접 확인 항목</div>
+        <ul class="pdf-list" id="pdf-checklist"></ul>`;
+        if (window._lastRenderData) {
+            const d = window._lastRenderData;
+            if (d.summary) document.getElementById('pdf-summary').innerText = d.summary;
+            if (d.strengths) d.strengths.forEach(s => { document.getElementById('pdf-strengths').innerHTML += `<li>${s}</li>`; });
+            if (d.issues) d.issues.forEach((issue, i) => {
+                document.getElementById('pdf-issues').innerHTML += `<div class="pdf-issue-item"><span class="badge-category">${issue.category}</span> <strong>${i+1}. ${issue.problem}</strong><br><span style="color:#666;font-style:italic;">"${issue.evidence}"</span><br><span style="color:#d35400;font-weight:600;">▶ ${issue.action}</span></div>`;
+            });
+            const issued2 = new Set((d.issues||[]).map(i => i.category));
+            let ck = `<div style="padding:4px 0;">`;
+            cats.forEach(cat => {
+                ck += issued2.has(cat)
+                    ? `<div style="padding:2px 0;font-size:10.5pt;">❌ <strong style="color:#d32f2f;">${cat}</strong> — 수정 필요</div>`
+                    : `<div style="padding:2px 0;font-size:10.5pt;">✅ <strong>${cat}</strong></div>`;
+            });
+            ck += `</div>`;
+            document.getElementById('pdf-checklist-result').innerHTML = ck;
+            if (d.final_checklist) d.final_checklist.forEach((c, idx) => {
+                const el = document.getElementById(`chk-${idx}`);
+                const checked = el && el.innerText === '☑';
+                document.getElementById('pdf-checklist').innerHTML += `<li>${checked ? '☑' : '☐'} ${c}</li>`;
+            });
+        }
+    }, 1500);
+}
+</script>
+</body>
+</html>

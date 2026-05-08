@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>스쿨톡 - School Talk</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+      /* 쌤의 코드에 있던 세부 애니메이션 추가 */
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+      .animate-fade-in-up { animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+    <script type="module" crossorigin src="./assets/index-DgJ0qUIl.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-FIbDykXw.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
